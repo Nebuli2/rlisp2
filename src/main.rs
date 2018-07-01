@@ -3,6 +3,7 @@ use im::ConsList;
 
 mod context;
 mod expression;
+mod intrinsics;
 
 fn main() {
     let list: ConsList<i32> = ConsList::new();
