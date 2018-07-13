@@ -1,0 +1,21 @@
+; map :: (a -> b) [a] -> [b]
+; Creates a list containing the values of the specified list after being passed
+; through the specified function.
+define (map fn xs)
+  cond
+    (empty? xs) '()
+    else {(fn (head xs)) : (map fn (tail xs))}
+
+; .. :: num num -> [num]
+; Produces a list containing the exclusive range from `from` to `to`.
+define (.. from to)
+  cond
+    {from >= to} '()
+    else {from : {{from + 1} .. to}}
+
+; ..= :: num num -> [num]
+; Produces a list containing the inclusive range from `from` to `to`.
+define (..= from to)
+  cond
+    {from > to} '()
+    else {from : {{from + 1} ..= to}}

@@ -1,0 +1,48 @@
+(define (fibonacci n)
+    (cond 
+        [{n = 0} 0]
+        [{n = 1} 1]
+        [else {(fibonacci {n - 1}) + (fibonacci {n - 2})}]))
+
+(define (square x)
+    {x * x})
+
+(define (map fn xs)
+    (cond
+        [(empty? xs) '()]
+        [else {(fn (head xs)) : (map fn (tail xs))}]))
+
+(define range ..)
+
+(define range-inclusive ..=)
+
+(define (.. from to)
+    (cond
+        [{from >= to} '()]
+        [else {from : {{from + 1} .. to}}]))
+
+(define (..= from to)
+    (cond
+        [{from > to} '()]
+        [else {from : {{from + 1} ..= to}}]))
+
+(define (foldr fn acc xs)
+    (cond
+        [(empty? xs) acc]
+        [else (foldr fn (fn acc (head xs)) (tail xs))]))
+
+define (foldr fn acc xs)
+    cond
+        (empty? xs) acc
+        else (foldr fn (fn acc (head xs)) (tail xs))
+
+(define (sum xs)
+    (foldr + 0 xs))
+
+(define (product xs)
+    (foldr * 1 xs))
+
+(define (factorial n)
+    (product {1 ..= n}))
+
+{1 + 2 - 3}
