@@ -49,5 +49,6 @@ pub fn load_functions(ctx: &mut Context) {
     define_intrinsic(ctx, "println", functions::_println);
 
     define_intrinsic(ctx, "++", functions::_append);
+    define_intrinsic(ctx, "append", functions::_append);
     define_intrinsic(ctx, "empty?", functions::_empty);
 }

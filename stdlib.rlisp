@@ -1,21 +1,48 @@
 ; map :: (a -> b) [a] -> [b]
 ; Creates a list containing the values of the specified list after being passed
 ; through the specified function.
-define (map fn xs)
-  cond
+define : map fn xs
+  cond : (empty? xs) '()
+         else {(fn (head xs)) cons (map fn (tail xs))}
+
+define : forall fn xs
+  cond 
     (empty? xs) '()
-    else {(fn (head xs)) : (map fn (tail xs))}
+    else
+      begin
+        fn : head xs
+        forall fn : tail xs
+
+let
+  : x 10
+    y 5
+  body
 
 ; .. :: num num -> [num]
 ; Produces a list containing the exclusive range from `from` to `to`.
-define (.. from to)
-  cond
-    {from >= to} '()
-    else {from : {{from + 1} .. to}}
+define : .. from to
+  cond : {from >= to} '()
+         else {from cons {{from + 1} .. to}}
 
 ; ..= :: num num -> [num]
 ; Produces a list containing the inclusive range from `from` to `to`.
-define (..= from to)
-  cond
-    {from > to} '()
-    else {from : {{from + 1} ..= to}}
+define : ..= from to
+  cond : {from > to} '()
+         else {from cons {{from + 1} ..= to}}
+
+define range ..
+define range-inclusive ..=
+
+define : greet name
+  println {"Hello, " ++ name ++ "!"}
+
+define : greet name
+  println : ++ "Hello, " name "!"
+
+define : greet name
+  println : append "Hello, " name "!"
+
+define : factorial n
+  if {n = 0}
+     . 1
+     * n : factorial {n - 1}

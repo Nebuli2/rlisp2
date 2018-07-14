@@ -28,7 +28,7 @@ fn load(file: &str) -> Result<expression::Expression, Box<Error>> {
     let mut buf = String::new();
     reader.read_to_string(&mut buf)?;
 
-    let stripped = strip_comments(buf);
+    let stripped = first_pass(buf);
     let processed = process(stripped);
 
     let iter = processed.chars();
@@ -51,7 +51,7 @@ fn main() {
     intrinsics::load_macros(&mut ctx);
 
     // Load file
-    let expr = load("test2.rlisp").expect("could not read file");
+    let expr = load("stdlib.rlisp").expect("could not read file");
     let _evaluated = expr.eval(&mut ctx);
 
     loop {
@@ -61,7 +61,7 @@ fn main() {
         stdin()
             .read_line(&mut line_buf)
             .expect("could not read line");
-        let processed = process(strip_comments(line_buf));
+        let processed = process(first_pass(line_buf));
         let mut parser = Parser::new(processed.chars());
         let expr = parser.parse_expr();
         if let Some(expr) = expr {
