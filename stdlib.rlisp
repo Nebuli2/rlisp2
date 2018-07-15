@@ -9,7 +9,8 @@ define : map fn xs
 
 define : forall fn xs
   cond 
-    (empty? xs) '()
+    : empty? xs
+      '()
     else
       begin
         fn : head xs

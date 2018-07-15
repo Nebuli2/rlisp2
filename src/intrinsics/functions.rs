@@ -26,17 +26,16 @@ use std::ops::{Add, Div, Mul, Rem, Sub};
 ///
 /// Produces the sum of the two specified values.
 pub fn _add(args: &[Expression]) -> Expression {
-    let nums: Option<Vec<_>> = args.iter()
+    let xs: Result<Vec<_>, &Expression> = args.iter()
         .map(|expr| match expr {
-            Num(n) => Some(*n),
-            _ => None,
+            Num(n) => Ok(*n),
+            other => Err(other),
         })
         .collect();
 
-    let res = nums.map(|nums| nums.into_iter().fold(0.0, Add::add))
-        .unwrap_or_else(|| 0.0);
-
-    Num(res)
+    xs.map(|xs| xs.into_iter().fold(0.0, Add::add))
+        .map(|x| Num(x))
+        .unwrap_or_else(|e| Exception(Signature("num".into(), e.to_string().into())))
 }
 
 /// `- :: num num -> num`
@@ -75,17 +74,16 @@ pub fn _sub(args: &[Expression]) -> Expression {
 ///
 /// Produces the product of the two specified values.
 pub fn _mul(args: &[Expression]) -> Expression {
-    let nums: Option<Vec<_>> = args.iter()
+    let xs: Result<Vec<_>, &Expression> = args.iter()
         .map(|expr| match expr {
-            Num(n) => Some(*n),
-            _ => None,
+            Num(n) => Ok(*n),
+            other => Err(other),
         })
         .collect();
 
-    let res = nums.map(|nums| nums.into_iter().fold(1.0, Mul::mul))
-        .unwrap_or_else(|| 1.0);
-
-    Num(res)
+    xs.map(|xs| xs.into_iter().fold(1.0, Mul::mul))
+        .map(|x| Num(x))
+        .unwrap_or_else(|e| Exception(Signature("num".into(), e.to_string().into())))
 }
 
 /// `/ :: num num -> num`
@@ -270,7 +268,11 @@ pub fn _begin(args: &[Expression]) -> Expression {
 /// linebreak.
 pub fn _println(args: &[Expression]) -> Expression {
     for arg in args {
-        print!("{} ", arg);
+        let fmt = match arg {
+            Str(s) => s.to_string(),
+            other => other.to_string(),
+        };
+        print!("{} ", fmt);
     }
     println!();
     Cons(ConsList::new())

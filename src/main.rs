@@ -1,6 +1,9 @@
 extern crate im;
 use im::ConsList;
 
+extern crate termcolor;
+use termcolor::Color;
+
 mod context;
 mod environment;
 mod exception;
@@ -19,6 +22,7 @@ use std::io::prelude::*;
 use std::io::stdin;
 use std::io::stdout;
 use std::io::BufReader;
+use util::set_stdout_color;
 use util::wrap_begin;
 
 fn load(file: &str) -> Result<expression::Expression, Box<Error>> {
@@ -56,8 +60,8 @@ fn load(file: &str) -> Result<expression::Expression, Box<Error>> {
             let stripped = first_pass(removed_commands);
             processed = process(stripped);
             processed.chars()
-        },
-        false => removed_commands.chars()
+        }
+        false => removed_commands.chars(),
     };
 
     let mut parser = Parser::new(iter);
@@ -73,6 +77,8 @@ fn load(file: &str) -> Result<expression::Expression, Box<Error>> {
 }
 
 fn main() {
+    set_stdout_color(None);
+
     let preprocess_repl = false;
 
     let mut ctx = Context::new();
@@ -93,7 +99,7 @@ fn main() {
 
         let line = match preprocess_repl {
             true => process(first_pass(line_buf)),
-            false => line_buf
+            false => line_buf,
         };
         let mut parser = Parser::new(line.chars());
         let expr = parser.parse_expr();
@@ -101,7 +107,14 @@ fn main() {
             // println!("parsed: {:?}", expr);
             let evaluated = expr.eval(&mut ctx);
             if !evaluated.is_nil() {
-                println!("{}", evaluated);
+                match evaluated {
+                    ex @ Expression::Exception(_) => {
+                        set_stdout_color(Some(Color::Red));
+                        println!("{}", ex);
+                        set_stdout_color(None);
+                    }
+                    val => println!("{}", val),
+                }
             }
         }
     }

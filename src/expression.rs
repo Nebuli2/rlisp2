@@ -48,13 +48,13 @@ impl Expression {
                 if let Some(value) = ctx.get(ident) {
                     capture.insert(ident.clone(), value.clone());
                 }
-            },
+            }
             Cons(children) => {
                 for child in children.iter() {
                     child.extract_symbols_to_capture(capture, ctx);
                 }
             }
-            _ => ()
+            _ => (),
         }
     }
 
@@ -80,24 +80,28 @@ impl Expression {
                     match func {
                         Macro(f) => f(self, ctx),
                         Intrinsic(f) => {
-                            let args: Vec<_> = list.tail()
+                            let args: Result<Vec<_>, _> = list.tail()
                                 .unwrap_or_else(|| ConsList::new())
                                 .iter()
-                                .map(|expr| expr.eval(ctx))
+                                .map(|expr| match expr.eval(ctx) {
+                                    Exception(e) => Err(e),
+                                    expr => Ok(expr),
+                                })
                                 .collect();
-                            f(&args)
+                            args.map(|args| f(&args)).unwrap_or_else(|e| Exception(e))
                         }
-                        Lambda(params, body, capture) => eval_lambda(
-                            params,
-                            &body,
-                            list.tail()
-                                .unwrap_or_else(|| ConsList::new())
+                        Lambda(params, body, capture) => {
+                            let args: Result<ConsList<_>, _> = list.tail()
+                                .unwrap_or_default()
                                 .iter()
-                                .map(|expr| expr.eval(ctx))
-                                .collect(),
-                            ctx,
-                            capture,
-                        ),
+                                .map(|expr| match expr.eval(ctx) {
+                                    Exception(e) => Err(e),
+                                    expr => Ok(expr),
+                                })
+                                .collect();
+                            args.map(|args| eval_lambda(params, &body, args, ctx, capture))
+                                .unwrap_or_else(|e| Exception(e))
+                        }
                         _ => Exception(Custom("not a callable value".into())),
                     }
                 } else {
@@ -116,7 +120,7 @@ fn eval_lambda(
     body: &Expression,
     args: ConsList<Expression>,
     ctx: &mut Context,
-    capture: Option<Capture>
+    capture: Option<Capture>,
 ) -> Expression {
     // Check arity
     match (params.len(), args.len()) {
@@ -158,7 +162,7 @@ impl fmt::Display for Expression {
             Lambda(..) => write!(f, "<lambda>")?,
             Intrinsic(..) => write!(f, "<intrinsic>")?,
             Macro(..) => write!(f, "<macro>")?,
-            Exception(ex) => write!(f, "[exception] {}", ex)?,
+            Exception(ex) => write!(f, "[Exception]: {}", ex)?,
         }
         Ok(())
     }
