@@ -28,10 +28,37 @@ fn load(file: &str) -> Result<expression::Expression, Box<Error>> {
     let mut buf = String::new();
     reader.read_to_string(&mut buf)?;
 
-    let stripped = first_pass(buf);
-    let processed = process(stripped);
+    // Look for directive lines
+    let mut use_preprocessor = false;
+    {
+        let iter = buf.lines()
+            .filter(|line| !line.is_empty())
+            .filter(|line| line.trim().starts_with('#'))
+            .map(|line| line.split_at(1).1);
+        for line in iter {
+            if line == "enable-preprocessor" {
+                use_preprocessor = true;
+            } else {
+                Err(format!("{} is not a known preprocessor command", line))?;
+            }
+        }
+    }
 
-    let iter = processed.chars();
+    let removed_commands: String = buf.lines()
+        .filter(|line| !line.trim().starts_with('#'))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // println!("{}", removed_commands);
+    let processed;
+    let iter = match use_preprocessor {
+        true => {
+            let stripped = first_pass(removed_commands);
+            processed = process(stripped);
+            processed.chars()
+        },
+        false => removed_commands.chars()
+    };
 
     let mut parser = Parser::new(iter);
 
@@ -46,6 +73,8 @@ fn load(file: &str) -> Result<expression::Expression, Box<Error>> {
 }
 
 fn main() {
+    let preprocess_repl = false;
+
     let mut ctx = Context::new();
     intrinsics::load_functions(&mut ctx);
     intrinsics::load_macros(&mut ctx);
@@ -61,8 +90,12 @@ fn main() {
         stdin()
             .read_line(&mut line_buf)
             .expect("could not read line");
-        let processed = process(first_pass(line_buf));
-        let mut parser = Parser::new(processed.chars());
+
+        let line = match preprocess_repl {
+            true => process(first_pass(line_buf)),
+            false => line_buf
+        };
+        let mut parser = Parser::new(line.chars());
         let expr = parser.parse_expr();
         if let Some(expr) = expr {
             // println!("parsed: {:?}", expr);

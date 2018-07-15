@@ -5,6 +5,8 @@ use im::ConsList;
 use std::fmt;
 use util::Str;
 
+pub type Capture = HashMap<Str, Expression>;
+
 #[derive(Clone)]
 pub enum Expression {
     Bool(bool),
@@ -14,7 +16,7 @@ pub enum Expression {
 
     Cons(ConsList<Expression>),
 
-    Lambda(ConsList<Str>, Box<Expression>),
+    Lambda(ConsList<Str>, Box<Expression>, Option<Capture>),
 
     // Represents an intrinsic function, taking a slice of expressions and
     // returning another expression.
@@ -30,6 +32,7 @@ pub enum Expression {
 }
 
 use self::Expression::*;
+use std::collections::HashMap;
 
 impl Expression {
     pub fn is_nil(&self) -> bool {
@@ -37,6 +40,28 @@ impl Expression {
             Cons(list) => list.is_empty(),
             _ => false,
         }
+    }
+
+    fn extract_symbols_to_capture(&self, capture: &mut Capture, ctx: &Context) {
+        match self {
+            Symbol(ident) => {
+                if let Some(value) = ctx.get(ident) {
+                    capture.insert(ident.clone(), value.clone());
+                }
+            },
+            Cons(children) => {
+                for child in children.iter() {
+                    child.extract_symbols_to_capture(capture, ctx);
+                }
+            }
+            _ => ()
+        }
+    }
+
+    pub fn extract_symbols(&self, ctx: &Context) -> Capture {
+        let mut capture = HashMap::new();
+        self.extract_symbols_to_capture(&mut capture, ctx);
+        capture
     }
 
     pub fn eval(&self, ctx: &mut Context) -> Expression {
@@ -62,7 +87,7 @@ impl Expression {
                                 .collect();
                             f(&args)
                         }
-                        Lambda(params, body) => eval_lambda(
+                        Lambda(params, body, capture) => eval_lambda(
                             params,
                             &body,
                             list.tail()
@@ -71,6 +96,7 @@ impl Expression {
                                 .map(|expr| expr.eval(ctx))
                                 .collect(),
                             ctx,
+                            capture,
                         ),
                         _ => Exception(Custom("not a callable value".into())),
                     }
@@ -90,11 +116,21 @@ fn eval_lambda(
     body: &Expression,
     args: ConsList<Expression>,
     ctx: &mut Context,
+    capture: Option<Capture>
 ) -> Expression {
     // Check arity
     match (params.len(), args.len()) {
         (expected, found) if expected == found => {
             ctx.ascend_scope();
+
+            // Apply values from capture
+            if let Some(capture) = capture {
+                for (key, value) in capture.into_iter() {
+                    ctx.insert(key, value);
+                }
+            }
+
+            // Apply arguments to parameters
             for (param, arg) in params.iter().zip(args.iter()) {
                 ctx.insert(param.to_string(), (*arg).clone());
             }
@@ -157,8 +193,8 @@ impl PartialEq for Expression {
             (Str(a), Str(b)) => a == b,
             (Bool(a), Bool(b)) => a == b,
             (Symbol(a), Symbol(b)) => a == b,
-            (Lambda(args_a, body_a), Lambda(args_b, body_b)) => {
-                args_a == args_b && body_a == body_b
+            (Lambda(args_a, body_a, cap_a), Lambda(args_b, body_b, cap_b)) => {
+                args_a == args_b && body_a == body_b && cap_a == cap_b
             }
             (Quote(a), Quote(b)) => a == b,
             (Cons(a), Cons(b)) => a == b,

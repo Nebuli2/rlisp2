@@ -9,7 +9,7 @@ use im::ConsList;
 
 const DEFINE: &str = "define";
 
-fn create_lambda(params: ConsList<Expression>, body: Expression) -> Expression {
+fn create_lambda(params: ConsList<Expression>, body: Expression, ctx: &Context) -> Expression {
     let params: Result<ConsList<Str>, ()> = params
         .iter()
         .map(|param| match *param {
@@ -18,11 +18,20 @@ fn create_lambda(params: ConsList<Expression>, body: Expression) -> Expression {
         })
         .collect();
     params
-        .map(|params| Lambda(params, Box::new(body.clone())))
+        .map(|params| {
+            // Attempt to create capture
+            let capture = body.extract_symbols(ctx);
+            let capture = if capture.is_empty() {
+                None
+            } else {
+                Some(capture)
+            };
+            Lambda(params, Box::new(body.clone()), capture)
+        })
         .unwrap_or_else(|_| Exception(Syntax("(lambda [args...] body)".into())))
 }
 
-pub fn _lambda(expr: &Expression, _: &mut Context) -> Expression {
+pub fn _lambda(expr: &Expression, ctx: &mut Context) -> Expression {
     match expr {
         Cons(list) => {
             let params = list.tail().and_then(|list| list.head());
@@ -31,7 +40,7 @@ pub fn _lambda(expr: &Expression, _: &mut Context) -> Expression {
             // let _lambda = Symbol(LAMBDA.into());
             match (params, body) {
                 (Some(params), Some(body)) => match (*params).clone() {
-                    Cons(list) => create_lambda(list.clone(), body),
+                    Cons(list) => create_lambda(list.clone(), body, ctx),
                     _ => Exception(Syntax("(lambda [args...] body)".into())),
                 },
                 // create_lambda(params.clone(), body.clone()),
@@ -75,7 +84,8 @@ pub fn _define(expr: &Expression, ctx: &mut Context) -> Expression {
                             match (*ident).clone() {
                                 Str(ident) => {
                                     let params = list.tail().unwrap_or_else(|| ConsList::new());
-                                    ctx.insert(ident, create_lambda(params, body));
+                                    let lambda = create_lambda(params, body, ctx);
+                                    ctx.insert(ident, lambda);
                                     nil()
                                 }
                                 _ => Exception(Syntax("(define ident body...)".into())),
@@ -105,7 +115,7 @@ pub fn _define(expr: &Expression, ctx: &mut Context) -> Expression {
                     if let Some(name) = func_name {
                         match name {
                             Symbol(name) => {
-                                let lambda = create_lambda(func_args, body.clone());
+                                let lambda = create_lambda(func_args, body.clone(), ctx);
                                 if let Exception(e) = lambda {
                                     Exception(e)
                                 } else {
