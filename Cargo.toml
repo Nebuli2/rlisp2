@@ -1,8 +1,12 @@
+[workspace]
+members = [
+    "rlisp-core"
+]
+
 [package]
 name = "rlisp2"
 version = "0.1.0"
-authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
+authors = ["benhetherington"]
 
 [dependencies]
-im = "10.2.0"
-termcolor = "0.3.6"
+rlisp-core = { path = "./rlisp-core/" }

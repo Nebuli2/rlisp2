@@ -1,121 +1,46 @@
-extern crate im;
-use im::ConsList;
-
-extern crate termcolor;
-use termcolor::Color;
-
-mod context;
-mod environment;
-mod exception;
-mod expression;
-mod intrinsics;
-mod parser;
-mod util;
-
-use context::Context;
-use expression::Expression;
-use parser::preprocessor::*;
-use parser::Parser;
-use std::error::Error;
-use std::fs::File;
+extern crate rlisp_core;
+use rlisp_core::expression::Expression;
+use rlisp_core::prelude::*;
+use rlisp_core::util::{clear_color, set_red};
+use rlisp_core::intrinsics::functions::_import;
 use std::io::prelude::*;
-use std::io::stdin;
-use std::io::stdout;
-use std::io::BufReader;
-use util::set_stdout_color;
-use util::wrap_begin;
-
-fn load(file: &str) -> Result<expression::Expression, Box<Error>> {
-    let file = File::open(file)?;
-    let mut reader = BufReader::new(file);
-
-    let mut buf = String::new();
-    reader.read_to_string(&mut buf)?;
-
-    // Look for directive lines
-    let mut use_preprocessor = false;
-    {
-        let iter = buf.lines()
-            .filter(|line| !line.is_empty())
-            .filter(|line| line.trim().starts_with('#'))
-            .map(|line| line.split_at(1).1);
-        for line in iter {
-            if line == "enable-preprocessor" {
-                use_preprocessor = true;
-            } else {
-                Err(format!("{} is not a known preprocessor command", line))?;
-            }
-        }
-    }
-
-    let removed_commands: String = buf.lines()
-        .filter(|line| !line.trim().starts_with('#'))
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    // println!("{}", removed_commands);
-    let processed;
-    let iter = match use_preprocessor {
-        true => {
-            let stripped = first_pass(removed_commands);
-            processed = process(stripped);
-            processed.chars()
-        }
-        false => removed_commands.chars(),
-    };
-
-    let mut parser = Parser::new(iter);
-
-    let mut exprs = Vec::new();
-    while let Some(expr) = parser.parse_expr() {
-        exprs.push(expr);
-    }
-
-    let expr = wrap_begin(exprs.into());
-    Ok(expr)
-    // Ok(expr)
-}
+use std::io::{stdin, stdout};
 
 fn main() {
-    set_stdout_color(None);
-
-    let preprocess_repl = false;
-
     let mut ctx = Context::new();
-    intrinsics::load_functions(&mut ctx);
-    intrinsics::load_macros(&mut ctx);
+    load(&mut ctx);
 
-    // Load file
-    let expr = load("stdlib.rlisp").expect("could not read file");
-    let _evaluated = expr.eval(&mut ctx);
+    // Load stdlib
+    let res = _import(&[Expression::Str("stdlib.rlisp".into())], &mut ctx);
+    if let err @ Expression::Exception(..) = res {
+        set_red();
+        println!("{}", err);
+        clear_color();
+        return;
+    }
 
+    let mut line = String::new();
     loop {
         print!("> ");
-        stdout().flush().expect("could not flush");
-        let mut line_buf = String::new();
-        stdin()
-            .read_line(&mut line_buf)
-            .expect("could not read line");
-
-        let line = match preprocess_repl {
-            true => process(first_pass(line_buf)),
-            false => line_buf,
-        };
-        let mut parser = Parser::new(line.chars());
-        let expr = parser.parse_expr();
-        if let Some(expr) = expr {
-            // println!("parsed: {:?}", expr);
-            let evaluated = expr.eval(&mut ctx);
-            if !evaluated.is_nil() {
-                match evaluated {
-                    ex @ Expression::Exception(_) => {
-                        set_stdout_color(Some(Color::Red));
-                        println!("{}", ex);
-                        set_stdout_color(None);
+        stdout().flush().expect("failed to flush stdout");
+        stdin().read_line(&mut line).expect("failed to read line");
+        {
+            let mut parser = Parser::new(line.chars());
+            parser.parse_expr().map(|expr| {
+                let result = expr.eval(&mut ctx);
+                match result {
+                    err @ Expression::Exception(..) => {
+                        set_red();
+                        println!("{}", err);
+                        clear_color();
                     }
-                    val => println!("{}", val),
+                    ref res if !res.is_nil() => {
+                        println!("{}", res);
+                    }
+                    _ => {}
                 }
-            }
+            });
         }
+        line.clear();
     }
 }

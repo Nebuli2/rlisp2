@@ -1,0 +1,8 @@
+[package]
+name = "rlisp-core"
+version = "0.1.0"
+authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
+
+[dependencies]
+im = "10.2.0"
+termcolor = "0.3.6"

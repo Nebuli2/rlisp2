@@ -1,0 +1,58 @@
+#enable-preprocessor
+
+; map :: (a -> b) [a] -> [b]
+; Creates a list containing the values of the specified list after being passed
+; through the specified function.
+define : map fn xs
+  cond : (empty? xs) '()
+         else {(fn (head xs)) cons (map fn (tail xs))}
+
+; forall :: (a -> nil) [a] -> nil
+define : forall fn xs
+  cond 
+    : empty? xs
+      '()
+    else
+      begin
+        fn : head xs
+        forall fn : tail xs
+
+; .. :: num num -> [num]
+; Produces a list containing the exclusive range from `from` to `to`.
+define : .. from to
+  cond : {from >= to} '()
+         else {from cons {{from + 1} .. to}}
+
+; ..= :: num num -> [num]
+; Produces a list containing the inclusive range from `from` to `to`.
+define : ..= from to
+  cond : {from > to} '()
+         else {from cons {{from + 1} ..= to}}
+
+define range ..
+define range-inclusive ..=
+
+define : greet name
+  println {"Hello, " ++ name ++ "!"}
+
+define : greet name
+  println : ++ "Hello, " name "!"
+
+define : greet name
+  println : append "Hello, " name "!"
+
+define : factorial n
+  cond : {n < 0} -1
+         {n = 0} 1
+         else {n * (factorial {n - 1})}
+
+; do-twice :: (a -> a) -> (a -> a)
+define : do-twice fn
+  lambda [x]
+    fn
+      fn x
+
+; compose :: (a -> b) (b -> c) -> (a -> c)
+define : compose f g
+  lambda : x
+    f : g x
