@@ -3,6 +3,14 @@ use exception::Exception::*;
 use expression::Expression;
 use expression::Expression::*;
 use im::ConsList;
+use parser::preprocessor::*;
+use parser::Parser;
+use std::error::Error;
+use std::fs::File;
+use std::io::BufReader;
+use util::wrap_begin;
+use std::io::prelude::*;
+use std::io::stdout;
 
 fn unary_fn(args: &[Expression], f: impl Fn(f64) -> f64) -> Expression {
     match args {
@@ -281,9 +289,12 @@ pub fn _display(args: &[Expression], _: &mut Context) -> Expression {
             Str(s) => s.to_string(),
             other => other.to_string(),
         };
-        print!("{} ", fmt);
+        print!("{}", fmt);
     }
-    Cons(ConsList::new())
+    stdout().flush()
+        .map_err(|_| Custom("could not flush stdout".into()))
+        .map(|_| Expression::default())
+        .unwrap_or_else(|ex| Exception(ex))
 }
 
 pub fn _newline(args: &[Expression], _: &mut Context) -> Expression {
@@ -347,14 +358,6 @@ pub fn _eval(args: &[Expression], ctx: &mut Context) -> Expression {
     }
 }
 
-use parser::preprocessor::*;
-use parser::Parser;
-use std::error::Error;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::BufReader;
-use util::wrap_begin;
-
 fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
     let file = File::open(file_name.as_ref())?;
     let mut reader = BufReader::new(file);
@@ -414,6 +417,33 @@ pub fn _import(args: &[Expression], ctx: &mut Context) -> Expression {
             res.map(|ex| ex.eval(ctx))
                 .unwrap_or_else(|_| Exception(Custom("Could not read file.".into())))
         }
+        xs => Exception(Arity(1, xs.len())),
+    }
+}
+
+use std::io::stdin;
+
+pub fn _readline(args: &[Expression], _: &mut Context) -> Expression {
+    match args.len() {
+        0 => {
+            let mut buf = String::new();
+            stdin().read_line(&mut buf)
+                .map_err(|_| Custom("failed to read stdin".into()))
+                .map(|_| Str(buf.trim().into()))
+                .unwrap_or_else(|ex| Exception(ex))
+        },
+        n => Exception(Arity(0, n))
+    }
+}
+
+pub fn _parse(args: &[Expression], _: &mut Context) -> Expression {
+    match args {
+        [Str(s)] => {
+            let mut parser = Parser::new(s.chars());
+            parser.parse_expr()
+                .unwrap_or_else(|| Exception(Custom(format!("could not parse {}", s).into())))
+        },
+        [x] => Exception(Signature("string".into(), x.to_string().into())),
         xs => Exception(Arity(1, xs.len())),
     }
 }

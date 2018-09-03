@@ -23,6 +23,10 @@ pub fn set_red() {
     set_stdout_color(Some(Color::Red));
 }
 
+pub fn set_green() {
+    set_stdout_color(Some(Color::Green));
+}
+
 pub fn clear_color() {
     set_stdout_color(None);
 }

@@ -36,10 +36,10 @@
 
 ; sum : list[num] -> num
 (define (sum xs)
-    (foldr + 0 xs))
-
-(define (sum-fast xs)
     (apply + xs))
+
+(define (product xs)
+    (apply * xs))
 
 (define (range from to)
     (cond [{from = to} empty]
@@ -62,15 +62,26 @@
 ;           [else (foldr f (f (head xs) acc) (tail xs))])))))
 
 ; Defines the prompt used by the REPL. If none is defined, it defaults to "> ".
-(define PROMPT "> ")
+(define PROMPT "rlisp> ")
 
 ; (define-syntax reload
 ;     (syntax-rules []
 ;         (reload)
 ;         (import "stdlib.rlisp")))
 
+(define (prompt p)
+    (display p)
+    (readline))
+
+(define print display)
+(define (println s)
+    (display s)
+    (newline))
+
 (define (factorial n)
-    (define (fac n m)
-        (cond [{n = 0} m]
-              [else (fac {n - 1} {n * m})]))
-    (fac n 1))
+    (product {1 to n}))
+
+(define (repl)
+    (print PROMPT)
+    (println (eval (parse (readline))))
+    (repl))

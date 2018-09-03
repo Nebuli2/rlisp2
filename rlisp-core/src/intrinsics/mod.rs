@@ -60,6 +60,7 @@ fn load_functions(ctx: &mut Context) {
     define_intrinsic(ctx, "begin", functions::_begin);
     define_intrinsic(ctx, "display", functions::_display);
     define_intrinsic(ctx, "newline", functions::_newline);
+    define_intrinsic(ctx, "readline", functions::_readline);
 
     define_intrinsic(ctx, "++", functions::_append);
     define_intrinsic(ctx, "append", functions::_append);
@@ -67,4 +68,5 @@ fn load_functions(ctx: &mut Context) {
 
     define_intrinsic(ctx, "eval", functions::_eval);
     define_intrinsic(ctx, "import", functions::_import);
+    define_intrinsic(ctx, "parse", functions::_parse);
 }
