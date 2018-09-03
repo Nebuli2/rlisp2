@@ -74,11 +74,14 @@ where
             '"' => self.parse_str(),
             ')' | ']' => Some(Exception(Syntax(
                 format!(
-                    "illegal list close at ({}, {}) in {}", 
-                    self.col, 
+                    "illegal list close at ({}, {}) in {}",
+                    self.col,
                     self.row,
-                    self.name.as_ref().map(|s| s.clone()).unwrap_or_else(|| "<unnamed>".to_string())
-                ).into()
+                    self.name
+                        .as_ref()
+                        .map(|s| s.clone())
+                        .unwrap_or_else(|| "<unnamed>".to_string())
+                ).into(),
             ))),
             ';' => {
                 self.read_to(|ch| ch == '\n');

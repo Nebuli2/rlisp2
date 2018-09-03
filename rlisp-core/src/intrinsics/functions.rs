@@ -1,7 +1,7 @@
+use context::Context;
 use exception::Exception::*;
 use expression::Expression;
 use expression::Expression::*;
-use context::Context;
 use im::ConsList;
 
 fn unary_fn(args: &[Expression], f: impl Fn(f64) -> f64) -> Expression {
@@ -275,7 +275,7 @@ pub fn _begin(args: &[Expression], _: &mut Context) -> Expression {
 ///
 /// Prints the specified values, separated by spaces, and terminated with a
 /// linebreak.
-pub fn _println(args: &[Expression], _: &mut Context) -> Expression {
+pub fn _display(args: &[Expression], _: &mut Context) -> Expression {
     for arg in args {
         let fmt = match arg {
             Str(s) => s.to_string(),
@@ -283,8 +283,16 @@ pub fn _println(args: &[Expression], _: &mut Context) -> Expression {
         };
         print!("{} ", fmt);
     }
-    println!();
     Cons(ConsList::new())
+}
+
+pub fn _newline(args: &[Expression], _: &mut Context) -> Expression {
+    if args.len() == 0 {
+        println!();
+        Cons(ConsList::new())
+    } else {
+        Exception(Arity(0, args.len()))
+    }
 }
 
 pub fn _append(args: &[Expression], _: &mut Context) -> Expression {
@@ -339,12 +347,12 @@ pub fn _eval(args: &[Expression], ctx: &mut Context) -> Expression {
     }
 }
 
+use parser::preprocessor::*;
+use parser::Parser;
 use std::error::Error;
 use std::fs::File;
-use std::io::BufReader;
 use std::io::prelude::*;
-use parser::Parser;
-use parser::preprocessor::*;
+use std::io::BufReader;
 use util::wrap_begin;
 
 fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
@@ -357,7 +365,8 @@ fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
     // Look for directive lines
     let mut use_preprocessor = false;
     {
-        let iter = buf.lines()
+        let iter = buf
+            .lines()
             .filter(|line| !line.is_empty())
             .filter(|line| line.trim().starts_with('#'))
             .map(|line| line.split_at(1).1);
@@ -370,7 +379,8 @@ fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
         }
     }
 
-    let removed_commands: String = buf.lines()
+    let removed_commands: String = buf
+        .lines()
         .filter(|line| !line.trim().starts_with('#'))
         .collect::<Vec<_>>()
         .join("\n");
@@ -395,17 +405,15 @@ fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
 
     let expr = wrap_begin(exprs.into());
     Ok(expr)
-    // Ok(expr)
 }
 
 pub fn _import(args: &[Expression], ctx: &mut Context) -> Expression {
     match args {
         [Str(file_name)] => {
             let res = load_file(file_name);
-            res
-                .map(|ex| ex.eval(ctx))
+            res.map(|ex| ex.eval(ctx))
                 .unwrap_or_else(|_| Exception(Custom("Could not read file.".into())))
-        },
+        }
         xs => Exception(Arity(1, xs.len())),
     }
 }

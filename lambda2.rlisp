@@ -1,0 +1,7 @@
+#enable-preprocessor
+
+define \ lambda
+define zero : lambda [f] : lambda [x] x
+define succ : lambda [n] : lambda [f] : lambda [x] x
+define inc : lambda [x] {x + 1}
+define church->int : lambda [n] : (n inc) 0

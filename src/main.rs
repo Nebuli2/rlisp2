@@ -1,10 +1,12 @@
 extern crate rlisp_core;
-use rlisp_core::expression::Expression;
-use rlisp_core::prelude::*;
-use rlisp_core::util::{clear_color, set_red};
-use rlisp_core::intrinsics::functions::_import;
-use std::io::prelude::*;
-use std::io::{stdin, stdout};
+
+use rlisp_core::{
+    expression::Expression,
+    intrinsics::functions::_import,
+    prelude::*,
+    util::{clear_color, set_red},
+};
+use std::io::{prelude::*, stdin, stdout};
 
 fn main() {
     let mut ctx = Context::new();
@@ -21,7 +23,14 @@ fn main() {
 
     let mut line = String::new();
     loop {
-        print!("> ");
+        let prompt = ctx
+            .get("PROMPT")
+            .and_then(|p| match p {
+                Expression::Str(s) => Some(s.to_string()),
+                _ => None,
+            })
+            .unwrap_or_else(|| "> ".to_string());
+        print!("{}", prompt);
         stdout().flush().expect("failed to flush stdout");
         stdin().read_line(&mut line).expect("failed to read line");
         {

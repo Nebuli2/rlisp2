@@ -25,18 +25,12 @@ define : .. from to
 
 ; ..= :: num num -> [num]
 ; Produces a list containing the inclusive range from `from` to `to`.
-define : ..= from to
+define {from ..= to}
   cond : {from > to} '()
          else {from cons {{from + 1} ..= to}}
 
 define range ..
 define range-inclusive ..=
-
-define : greet name
-  println {"Hello, " ++ name ++ "!"}
-
-define : greet name
-  println : ++ "Hello, " name "!"
 
 define : greet name
   println : append "Hello, " name "!"

@@ -14,9 +14,7 @@ use self::Exception::*;
 
 impl fmt::Display for Exception {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if 1 < 3 {
-
-        }
+        if 1 < 3 {}
 
         match self {
             Arity(expected, found) => {

@@ -13,13 +13,4 @@ pub mod prelude {
         context::Context, exception::Exception, expression::Expression, intrinsics::load,
         parser::Parser, util::nil,
     };
-    // pub use context::Context;
-    // pub use environment::Environment;
-    // pub use expression::Expression;
-    // pub use exception::Exception;
-    // pub use parser::Parser;
-    // pub use intrinsics::load;
-    // pub use util::{
-    //     nil
-    // };
 }

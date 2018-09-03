@@ -22,7 +22,7 @@ pub enum Expression {
     Intrinsic(fn(&[Expression], &mut Context) -> Expression),
 
     // Represents a macro that transforms the expression into a new expression.
-    Macro(fn(&Expression, &mut Context) -> Expression),
+    Macro(fn(&ConsList<Expression>, &mut Context) -> Expression),
 
     // Represents an exception
     Exception(exception::Exception),
@@ -38,6 +38,13 @@ impl Expression {
     pub fn is_nil(&self) -> bool {
         match self {
             Cons(list) => list.is_empty(),
+            _ => false,
+        }
+    }
+
+    pub fn is_exception(&self) -> bool {
+        match self {
+            Exception(..) => true,
             _ => false,
         }
     }
@@ -84,7 +91,7 @@ impl Expression {
                 if let Some(func) = list.head() {
                     let func = func.eval(ctx);
                     match func {
-                        Macro(f) => f(self, ctx),
+                        Macro(f) => f(list, ctx),
                         Intrinsic(f) => {
                             let args: Result<Vec<_>, _> = list
                                 .tail()
@@ -95,7 +102,8 @@ impl Expression {
                                     expr => Ok(expr),
                                 })
                                 .collect();
-                            args.map(|args| f(&args, ctx)).unwrap_or_else(|e| Exception(e))
+                            args.map(|args| f(&args, ctx))
+                                .unwrap_or_else(|e| Exception(e))
                         }
                         Lambda(params, body, capture) => {
                             let args: Result<ConsList<_>, _> = list
@@ -167,7 +175,12 @@ impl fmt::Display for Expression {
                 let inner = strs.join(" ");
                 write!(f, "({})", inner)?;
             }
-            Lambda(..) => write!(f, "<lambda>")?,
+            Lambda(params, body, ..) => {
+                let params_vec: Vec<_> =
+                    params.iter().map(|param| param.as_ref().clone()).collect();
+                let inner = params_vec.join(" ");
+                write!(f, "(lambda [{}] {})", inner, body)?;
+            }
             Intrinsic(..) => write!(f, "<intrinsic>")?,
             Macro(..) => write!(f, "<macro>")?,
             Exception(ex) => write!(f, "[Exception]: {}", ex)?,
@@ -179,15 +192,15 @@ impl fmt::Display for Expression {
 impl fmt::Debug for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Quote(expr) => write!(f, "Quote({})", expr),
-            Bool(b) => write!(f, "Bool({})", b),
-            Num(n) => write!(f, "Num({})", n),
-            Str(s) => write!(f, "Str(\"{}\")", s),
-            Symbol(s) => write!(f, "Symbol({})", s),
+            Quote(expr) => write!(f, "<Quote:{:?}>", expr),
+            Bool(b) => write!(f, "<Bool:{}>", b),
+            Num(n) => write!(f, "<Num:{}>", n),
+            Str(s) => write!(f, "<Str:\"{}\">", s),
+            Symbol(s) => write!(f, "<Symbol:{}>", s),
             Cons(list) => {
                 let strs: Vec<_> = list.iter().map(|expr| format!("{:?}", expr)).collect();
                 let inner = strs.join(", ");
-                write!(f, "Cons({})", inner)
+                write!(f, "<Cons:[{}]>", inner)
             }
             other => write!(f, "{}", other),
         }
@@ -212,5 +225,11 @@ impl PartialEq for Expression {
             (Cons(a), Cons(b)) => a == b,
             _ => false,
         }
+    }
+}
+
+impl Default for Expression {
+    fn default() -> Self {
+        nil()
     }
 }

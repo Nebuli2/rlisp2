@@ -1,0 +1,17 @@
+(define zero
+    (lambda [f] (lambda [x] x)))
+
+(define succ
+    (lambda [n] (lambda [f] (lambda [x] (f ((n f) x))))))
+
+(define inc 
+    (lambda [x] {x + 1}))
+
+(define church->int
+    (lambda [n] ((n inc) 0)))
+
+(define int->church
+    (lambda [n] 
+        (cond
+            [{n <= 0} zero]
+            [else (succ (int->church {n - 1}))])))

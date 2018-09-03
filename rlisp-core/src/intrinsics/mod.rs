@@ -1,5 +1,6 @@
 use context::Context;
 use expression::Expression;
+use im::ConsList;
 
 pub mod functions;
 pub mod macros;
@@ -9,14 +10,18 @@ pub fn load(ctx: &mut Context) {
     load_functions(ctx);
 }
 
-fn define_intrinsic(ctx: &mut Context, ident: impl ToString, f: fn(&[Expression], &mut Context) -> Expression) {
+fn define_intrinsic(
+    ctx: &mut Context,
+    ident: impl ToString,
+    f: fn(&[Expression], &mut Context) -> Expression,
+) {
     ctx.insert(ident.to_string(), Expression::Intrinsic(f));
 }
 
 fn define_macro(
     ctx: &mut Context,
     ident: impl ToString,
-    f: fn(&Expression, &mut Context) -> Expression,
+    f: fn(&ConsList<Expression>, &mut Context) -> Expression,
 ) {
     ctx.insert(ident.to_string(), Expression::Macro(f));
 }
@@ -27,6 +32,8 @@ fn load_macros(ctx: &mut Context) {
     define_macro(ctx, "env", macros::_env);
     define_macro(ctx, "if", macros::_if);
     define_macro(ctx, "cond", macros::_cond);
+    define_macro(ctx, "quote", macros::_quote);
+    define_macro(ctx, "let", macros::_let);
 }
 
 fn load_functions(ctx: &mut Context) {
@@ -51,7 +58,8 @@ fn load_functions(ctx: &mut Context) {
 
     define_intrinsic(ctx, "exit", functions::_exit);
     define_intrinsic(ctx, "begin", functions::_begin);
-    define_intrinsic(ctx, "println", functions::_println);
+    define_intrinsic(ctx, "display", functions::_display);
+    define_intrinsic(ctx, "newline", functions::_newline);
 
     define_intrinsic(ctx, "++", functions::_append);
     define_intrinsic(ctx, "append", functions::_append);
