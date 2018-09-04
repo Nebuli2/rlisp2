@@ -72,17 +72,7 @@ where
             '(' => self.parse_cons(')'),
             '[' => self.parse_cons(']'),
             '"' => self.parse_str(),
-            ')' | ']' => Some(Exception(Syntax(
-                format!(
-                    "illegal list close at ({}, {}) in {}",
-                    self.col,
-                    self.row,
-                    self.name
-                        .as_ref()
-                        .map(|s| s.clone())
-                        .unwrap_or_else(|| "<unnamed>".to_string())
-                ).into(),
-            ))),
+            ')' | ']' => Some(Exception(Syntax(5, format!("illegal list close").into()))),
             ';' => {
                 self.read_to(|ch| ch == '\n');
                 self.parse_expr()
@@ -115,6 +105,7 @@ where
                                     // Ensure that different operators are not used in infix lists
                                     if Some(expr) != op {
                                         return Some(Exception(Syntax(
+                                            6,
                                             "infix list operators must be equal".into(),
                                         )));
                                     }
@@ -124,7 +115,7 @@ where
                             }
                             is_op = !is_op;
                         }
-                        None => return Some(Exception(Syntax("unclosed infix list".into()))),
+                        None => return Some(Exception(Syntax(7, "unclosed infix list".into()))),
                     }
                 }
             }
@@ -165,18 +156,19 @@ where
         }
     }
 
-    pub fn parse_cons(&mut self, delimiter: char) -> Option<Expression> {
+    pub fn parse_cons(&mut self, end: char) -> Option<Expression> {
         let mut list = ConsList::new();
         while let Some(ch) = self.next_char() {
             match ch {
                 // Skip whitespace
                 ch if ch.is_whitespace() => (),
-                ch if ch == delimiter => break,
+                ch if ch == end => break,
                 ch => {
                     self.unread(ch);
                     match self.parse_expr() {
+                        Some(ref expr) if expr.is_exception() => return Some(expr.clone()),
                         Some(expr) => list = list + ConsList::singleton(expr),
-                        _ => return Some(Exception(Syntax("unclosed list".into()))),
+                        _ => return Some(Exception(Syntax(6, "unclosed list".into()))),
                     }
                 }
             }
@@ -192,7 +184,7 @@ where
                 ch => buf.push(ch),
             }
         }
-        Some(Exception(Syntax("unclosed string literal".into())))
+        Some(Exception(Syntax(8, "unclosed string literal".into())))
     }
 
     pub fn parse_atom(&mut self) -> Option<Expression> {

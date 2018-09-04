@@ -1,6 +1,7 @@
+use exception::Exception;
 use expression::Expression;
 use im::ConsList;
-use std::rc::Rc;
+use std::{io::prelude::*, rc::Rc};
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 pub type Str = Rc<str>;
@@ -29,4 +30,16 @@ pub fn set_green() {
 
 pub fn clear_color() {
     set_stdout_color(None);
+}
+
+pub fn print_err(ex: &Exception) {
+    let mut sout = StandardStream::stdout(ColorChoice::Always);
+    sout.set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
+        .expect("failed to set stdout color");
+    write!(sout, "error[{:02}]: ", ex.error_code()).expect("failed to write to stdout");
+    sout.set_color(ColorSpec::new().set_fg(None).set_bold(true))
+        .expect("failed to set stdout color");
+    write!(sout, "{}\n", ex).expect("failed to write to stdout");
+    sout.set_color(ColorSpec::new().set_fg(None).set_bold(false))
+        .expect("failed to set stdout color");
 }

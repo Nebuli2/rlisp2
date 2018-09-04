@@ -29,11 +29,13 @@ fn define_macro(
 fn load_macros(ctx: &mut Context) {
     define_macro(ctx, "define", macros::_define);
     define_macro(ctx, "lambda", macros::_lambda);
+    define_macro(ctx, "λ", macros::_lambda);
     define_macro(ctx, "env", macros::_env);
     define_macro(ctx, "if", macros::_if);
     define_macro(ctx, "cond", macros::_cond);
     define_macro(ctx, "quote", macros::_quote);
     define_macro(ctx, "let", macros::_let);
+    define_macro(ctx, "try", macros::_try);
 }
 
 fn load_functions(ctx: &mut Context) {

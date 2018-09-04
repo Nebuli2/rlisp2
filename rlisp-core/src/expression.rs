@@ -34,6 +34,21 @@ use self::Expression::*;
 use std::collections::HashMap;
 
 impl Expression {
+    pub fn type_of(&self) -> Str {
+        match self {
+            Num(..) => "num",
+            Bool(..) => "bool",
+            Str(..) => "string",
+            Cons(..) => "list",
+            Exception(..) => "error",
+            Symbol(..) => "symbol",
+            Lambda(..) => "lambda",
+            Intrinsic(..) => "lambda",
+            Macro(..) => "lambda",
+            _ => "unknown",
+        }.into()
+    }
+
     /// Determines whether or not the expression is nil.
     pub fn is_nil(&self) -> bool {
         match self {
@@ -45,6 +60,15 @@ impl Expression {
     pub fn is_exception(&self) -> bool {
         match self {
             Exception(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_callable(&self) -> bool {
+        match self {
+            Lambda(..) => true,
+            Intrinsic(..) => true,
+            Macro(..) => true,
             _ => false,
         }
     }
@@ -118,10 +142,17 @@ impl Expression {
                             args.map(|args| eval_lambda(params, &body, args, ctx, capture))
                                 .unwrap_or_else(|e| e)
                         }
-                        _ => Exception(Custom("not a callable value".into())),
+                        Exception(ex) => Exception(ex.clone()),
+                        other => Exception(Custom(
+                            2,
+                            format!("{} is not a callable value", other).into(),
+                        )),
                     }
                 } else {
-                    Exception(Custom("no function to call".into()))
+                    Exception(Custom(
+                        3,
+                        format!("{} has no function to call", Cons(list.clone())).into(),
+                    ))
                 }
             }
 
@@ -179,11 +210,11 @@ impl fmt::Display for Expression {
                 let params_vec: Vec<_> =
                     params.iter().map(|param| param.as_ref().clone()).collect();
                 let inner = params_vec.join(" ");
-                write!(f, "(lambda [{}] {})", inner, body)?;
+                write!(f, "(λ [{}] {})", inner, body)?;
             }
             Intrinsic(..) => write!(f, "<intrinsic>")?,
             Macro(..) => write!(f, "<macro>")?,
-            Exception(ex) => write!(f, "[Exception]: {}", ex)?,
+            Exception(ex) => write!(f, "error[{:03}]: {}", ex.error_code(), ex)?,
         }
         Ok(())
     }
@@ -231,5 +262,27 @@ impl PartialEq for Expression {
 impl Default for Expression {
     fn default() -> Self {
         nil()
+    }
+}
+
+pub trait ValidIdentifier {
+    fn is_valid_identifier(&self) -> bool;
+}
+
+impl ValidIdentifier for Str {
+    fn is_valid_identifier(&self) -> bool {
+        match self.as_ref() {
+            "define" | "cond" | "lambda" | "if" | "let" => false,
+            _ => true,
+        }
+    }
+}
+
+impl ValidIdentifier for Expression {
+    fn is_valid_identifier(&self) -> bool {
+        match self {
+            Symbol(s) => s.is_valid_identifier(),
+            _ => false,
+        }
     }
 }

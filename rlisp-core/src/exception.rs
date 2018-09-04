@@ -1,21 +1,21 @@
 use std::fmt;
 use util::Str;
 
+pub type ErrorCode = u16;
+
 #[derive(Clone)]
 pub enum Exception {
     Arity(usize, usize),
     Signature(Str, Str),
-    Custom(Str),
+    Custom(ErrorCode, Str),
     Undefined(Str),
-    Syntax(Str),
+    Syntax(ErrorCode, Str),
 }
 
 use self::Exception::*;
 
 impl fmt::Display for Exception {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if 1 < 3 {}
-
         match self {
             Arity(expected, found) => {
                 write!(f, "arity mismatch: expected {}, found {}", expected, found)
@@ -25,9 +25,21 @@ impl fmt::Display for Exception {
                 "signature mismatch: expected {}, found {}",
                 expected, found
             ),
-            Custom(err) => write!(f, "{}", err),
+            Custom(code, err) => write!(f, "{}", err),
             Undefined(symbol) => write!(f, "undefined symbol: {}", symbol),
-            Syntax(desc) => write!(f, "syntax error: {}", desc),
+            Syntax(code, desc) => write!(f, "syntax error: {}", desc),
+        }
+    }
+}
+
+impl Exception {
+    pub fn error_code(&self) -> ErrorCode {
+        match self {
+            Arity(..) => 4,
+            Signature(..) => 9,
+            Custom(code, ..) => *code,
+            Undefined(..) => 1,
+            Syntax(code, ..) => *code,
         }
     }
 }

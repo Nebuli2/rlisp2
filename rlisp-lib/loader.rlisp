@@ -1,0 +1,6 @@
+(import "rlisp-lib/stdio.rlisp")
+(import "rlisp-lib/stdlib.rlisp")
+(import "rlisp-lib/repl.rlisp")
+(import "rlisp-lib/lambda.rlisp")
+
+(println "Welcome to rlisp v0.1.0")

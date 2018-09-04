@@ -4,7 +4,7 @@ use rlisp_core::{
     expression::Expression,
     intrinsics::functions::_import,
     prelude::*,
-    util::{clear_color, set_red, set_green},
+    util::{clear_color, print_err, set_green, set_red},
 };
 use std::io::{prelude::*, stdin, stdout};
 
@@ -13,7 +13,10 @@ fn main() {
     load(&mut ctx);
 
     // Load stdlib
-    let res = _import(&[Expression::Str("rlisp-lib/stdlib.rlisp".into())], &mut ctx);
+    let res = _import(
+        &[Expression::Str("rlisp-lib/loader.rlisp".into())],
+        &mut ctx,
+    );
     if let err @ Expression::Exception(..) = res {
         set_red();
         println!("{}", err);
@@ -40,10 +43,8 @@ fn main() {
             parser.parse_expr().map(|expr| {
                 let result = expr.eval(&mut ctx);
                 match result {
-                    err @ Expression::Exception(..) => {
-                        set_red();
-                        println!("{}", err);
-                        clear_color();
+                    Expression::Exception(ex) => {
+                        print_err(&ex);
                     }
                     ref res if !res.is_nil() => {
                         println!("{}", res);

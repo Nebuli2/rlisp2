@@ -7,15 +7,15 @@ use parser::preprocessor::*;
 use parser::Parser;
 use std::error::Error;
 use std::fs::File;
-use std::io::BufReader;
-use util::wrap_begin;
 use std::io::prelude::*;
 use std::io::stdout;
+use std::io::BufReader;
+use util::wrap_begin;
 
 fn unary_fn(args: &[Expression], f: impl Fn(f64) -> f64) -> Expression {
     match args {
         [Num(x)] => Num(f(*x)),
-        [value] => Exception(Signature("num".into(), value.to_string().into())),
+        [value] => Exception(Signature("num".into(), value.type_of())),
         arr => Exception(Arity(1, arr.len())),
     }
 }
@@ -24,7 +24,10 @@ fn unary_fn(args: &[Expression], f: impl Fn(f64) -> f64) -> Expression {
 fn binary_fn(args: &[Expression], f: impl Fn(f64, f64) -> f64) -> Expression {
     match args {
         [Num(x), Num(y)] => Num(f(*x, *y)),
-        [x, y] => Exception(Signature("num, num".into(), format!("{}, {}", x, y).into())),
+        [x, y] => Exception(Signature(
+            "num, num".into(),
+            format!("{}, {}", x.type_of(), y.type_of()).into(),
+        )),
         arr => Exception(Arity(2, arr.len())),
     }
 }
@@ -45,7 +48,7 @@ pub fn _add(args: &[Expression], _: &mut Context) -> Expression {
 
     xs.map(|xs| xs.into_iter().fold(0.0, Add::add))
         .map(|x| Num(x))
-        .unwrap_or_else(|e| Exception(Signature("num".into(), e.to_string().into())))
+        .unwrap_or_else(|e| Exception(Signature("num".into(), e.type_of())))
 }
 
 /// `- :: num num -> num`
@@ -54,11 +57,12 @@ pub fn _add(args: &[Expression], _: &mut Context) -> Expression {
 pub fn _sub(args: &[Expression], _: &mut Context) -> Expression {
     match args.len() {
         0 => Exception(Custom(
+            4,
             "arity mismatch: expected at least 1 argument, found 0".into(),
         )),
         1 => match &args[0] {
             Num(n) => Num(-n),
-            other => Exception(Signature("num".into(), other.to_string().into())),
+            other => Exception(Signature("num".into(), other.type_of())),
         },
         _ => match &args[0] {
             Num(head) => {
@@ -77,7 +81,7 @@ pub fn _sub(args: &[Expression], _: &mut Context) -> Expression {
 
                 Num(res)
             }
-            other => Exception(Signature("num".into(), other.to_string().into())),
+            other => Exception(Signature("num".into(), other.type_of())),
         },
     }
 }
@@ -96,7 +100,7 @@ pub fn _mul(args: &[Expression], _: &mut Context) -> Expression {
 
     xs.map(|xs| xs.into_iter().fold(1.0, Mul::mul))
         .map(|x| Num(x))
-        .unwrap_or_else(|e| Exception(Signature("num".into(), e.to_string().into())))
+        .unwrap_or_else(|e| Exception(Signature("num".into(), e.type_of())))
 }
 
 /// `/ :: num num -> num`
@@ -105,11 +109,12 @@ pub fn _mul(args: &[Expression], _: &mut Context) -> Expression {
 pub fn _div(args: &[Expression], _: &mut Context) -> Expression {
     match args.len() {
         0 => Exception(Custom(
+            4,
             "arity mismatch: expected at least 1 argument, found 0".into(),
         )),
         1 => match &args[0] {
             Num(n) => Num(1.0 / n),
-            other => Exception(Signature("num".into(), other.to_string().into())),
+            other => Exception(Signature("num".into(), other.type_of())),
         },
         _ => match &args[0] {
             Num(head) => {
@@ -128,7 +133,7 @@ pub fn _div(args: &[Expression], _: &mut Context) -> Expression {
 
                 Num(res)
             }
-            other => Exception(Signature("num".into(), other.to_string().into())),
+            other => Exception(Signature("num".into(), other.type_of())),
         },
     }
 }
@@ -172,10 +177,9 @@ pub fn _cons(args: &[Expression], _: &mut Context) -> Expression {
 /// Produces the first element of the specified list.
 pub fn _head(args: &[Expression], _: &mut Context) -> Expression {
     match args {
-        [Cons(list)] => list
-            .head()
-            .map(|head| (*head).clone())
-            .unwrap_or_else(|| Exception(Custom("cannot get the tail of an empty list".into()))),
+        [Cons(list)] => list.head().map(|head| (*head).clone()).unwrap_or_else(|| {
+            Exception(Custom(10, "cannot get the tail of an empty list".into()))
+        }),
         _ => Exception(Signature("any, cons".into(), "not that".into())),
     }
 }
@@ -185,10 +189,9 @@ pub fn _head(args: &[Expression], _: &mut Context) -> Expression {
 /// Produces the remainder of the specified list after the first element.
 pub fn _tail(args: &[Expression], _: &mut Context) -> Expression {
     match args {
-        [Cons(list)] => list
-            .tail()
-            .map(|tail| Cons(tail))
-            .unwrap_or_else(|| Exception(Custom("cannot get the tail of an empty list".into()))),
+        [Cons(list)] => list.tail().map(|tail| Cons(tail)).unwrap_or_else(|| {
+            Exception(Custom(11, "cannot get the tail of an empty list".into()))
+        }),
         _ => Exception(Signature("any, cons".into(), "not that".into())),
     }
 }
@@ -204,8 +207,10 @@ pub fn _exit(args: &[Expression], _: &mut Context) -> Expression {
             let code = *code as i32;
             exit(code);
         }
+        [x] => Exception(Signature("num".into(), x.type_of())),
         [] => exit(0),
         args => Exception(Custom(
+            4,
             format!(
                 "arity mismatch: expected 0 or 1 arguments, found {}",
                 args.len()
@@ -291,8 +296,9 @@ pub fn _display(args: &[Expression], _: &mut Context) -> Expression {
         };
         print!("{}", fmt);
     }
-    stdout().flush()
-        .map_err(|_| Custom("could not flush stdout".into()))
+    stdout()
+        .flush()
+        .map_err(|_| Custom(12, "could not flush stdout".into()))
         .map(|_| Expression::default())
         .unwrap_or_else(|ex| Exception(ex))
 }
@@ -340,7 +346,7 @@ pub fn _append(args: &[Expression], _: &mut Context) -> Expression {
         return Str(buf.into());
     }
 
-    Exception(Custom("invalid types".into()))
+    Exception(Custom(13, "invalid types in append function".into()))
 }
 
 pub fn _empty(args: &[Expression], _: &mut Context) -> Expression {
@@ -414,8 +420,12 @@ pub fn _import(args: &[Expression], ctx: &mut Context) -> Expression {
     match args {
         [Str(file_name)] => {
             let res = load_file(file_name);
-            res.map(|ex| ex.eval(ctx))
-                .unwrap_or_else(|_| Exception(Custom("Could not read file.".into())))
+            res.map(|ex| ex.eval(ctx)).unwrap_or_else(|_| {
+                Exception(Custom(
+                    14,
+                    format!("could not read file {}", file_name).into(),
+                ))
+            })
         }
         xs => Exception(Arity(1, xs.len())),
     }
@@ -427,12 +437,13 @@ pub fn _readline(args: &[Expression], _: &mut Context) -> Expression {
     match args.len() {
         0 => {
             let mut buf = String::new();
-            stdin().read_line(&mut buf)
-                .map_err(|_| Custom("failed to read stdin".into()))
+            stdin()
+                .read_line(&mut buf)
+                .map_err(|_| Custom(15, "failed to read stdin".into()))
                 .map(|_| Str(buf.trim().into()))
                 .unwrap_or_else(|ex| Exception(ex))
-        },
-        n => Exception(Arity(0, n))
+        }
+        n => Exception(Arity(0, n)),
     }
 }
 
@@ -440,10 +451,11 @@ pub fn _parse(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Str(s)] => {
             let mut parser = Parser::new(s.chars());
-            parser.parse_expr()
-                .unwrap_or_else(|| Exception(Custom(format!("could not parse {}", s).into())))
-        },
-        [x] => Exception(Signature("string".into(), x.to_string().into())),
+            parser
+                .parse_expr()
+                .unwrap_or_else(|| Exception(Custom(16, format!("could not parse {}", s).into())))
+        }
+        [x] => Exception(Signature("string".into(), x.type_of())),
         xs => Exception(Arity(1, xs.len())),
     }
 }
