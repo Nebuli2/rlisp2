@@ -25,9 +25,9 @@ impl fmt::Display for Exception {
                 "signature mismatch: expected {}, found {}",
                 expected, found
             ),
-            Custom(code, err) => write!(f, "{}", err),
+            Custom(_, err) => write!(f, "{}", err),
             Undefined(symbol) => write!(f, "undefined symbol: {}", symbol),
-            Syntax(code, desc) => write!(f, "syntax error: {}", desc),
+            Syntax(_, desc) => write!(f, "syntax error: {}", desc),
         }
     }
 }

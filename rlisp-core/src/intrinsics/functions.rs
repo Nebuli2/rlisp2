@@ -1,4 +1,5 @@
 use context::Context;
+use exception::Exception;
 use exception::Exception::*;
 use expression::Expression;
 use expression::Expression::*;
@@ -11,6 +12,7 @@ use std::io::prelude::*;
 use std::io::stdout;
 use std::io::BufReader;
 use util::wrap_begin;
+use util::Str;
 
 fn unary_fn(args: &[Expression], f: impl Fn(f64) -> f64) -> Expression {
     match args {
@@ -33,6 +35,32 @@ fn binary_fn(args: &[Expression], f: impl Fn(f64, f64) -> f64) -> Expression {
 }
 
 use std::ops::{Add, Div, Mul, Rem, Sub};
+
+pub fn _and(args: &[Expression], _: &mut Context) -> Expression {
+    let bools: Result<Vec<_>, &Expression> = args
+        .iter()
+        .map(|expr| match expr {
+            Bool(b) => Ok(*b),
+            other => Err(other),
+        })
+        .collect();
+    bools
+        .map(|bs| Bool(bs.iter().all(|&b| b)))
+        .unwrap_or_else(|ex| Exception(Signature("bool".into(), ex.type_of())))
+}
+
+pub fn _or(args: &[Expression], _: &mut Context) -> Expression {
+    let bools: Result<Vec<_>, &Expression> = args
+        .iter()
+        .map(|expr| match expr {
+            Bool(b) => Ok(*b),
+            other => Err(other),
+        })
+        .collect();
+    bools
+        .map(|bs| Bool(bs.iter().any(|&b| b)))
+        .unwrap_or_else(|ex| Exception(Signature("bool".into(), ex.type_of())))
+}
 
 /// `+ :: num num -> num`
 ///
@@ -455,6 +483,115 @@ pub fn _parse(args: &[Expression], _: &mut Context) -> Expression {
                 .parse_expr()
                 .unwrap_or_else(|| Exception(Custom(16, format!("could not parse {}", s).into())))
         }
+        [x] => Exception(Signature("string".into(), x.type_of())),
+        xs => Exception(Arity(1, xs.len())),
+    }
+}
+
+pub fn _type_of(args: &[Expression], _: &mut Context) -> Expression {
+    match args {
+        [ex] => Symbol(ex.type_of()),
+        xs => Exception(Arity(1, xs.len())),
+    }
+}
+
+#[derive(Debug)]
+enum StrSection<'a> {
+    Literal(&'a str),
+    Expr(&'a str),
+}
+
+fn split_str(s: &str) -> Result<Vec<StrSection>, Exception> {
+    use self::StrSection::*;
+    let mut strs = Vec::new();
+    let mut in_expr = false;
+    let mut last = 0usize;
+    let mut i = 0usize;
+    let mut layers = 0usize;
+    let mut last_ch = '\0';
+    for ch in s.chars() {
+        const INTERPOLATION_CHAR: char = '#';
+        match ch {
+            '{' if last_ch == INTERPOLATION_CHAR => {
+                strs.push(Literal(&s[last..i - 1]));
+                in_expr = true;
+                last = i + 1; // Begin expression after opening brace
+            }
+            '{' if in_expr => {
+                layers += 1;
+            }
+            '}' if in_expr => {
+                if layers == 0 {
+                    strs.push(Expr(&s[last..i])); // Push section from expression
+                    in_expr = false;
+                    last = i + 1; // Begin next section after ending brace
+                } else {
+                    layers -= 1;
+                }
+            }
+            _ => (),
+        }
+        i += 1;
+        last_ch = ch;
+    }
+    if last != i {
+        strs.push(Literal(&s[last..i]));
+    }
+
+    if in_expr {
+        Err(Syntax(
+            32,
+            "unclosed expression while interpolating string".into(),
+        ))
+    } else {
+        Ok(strs)
+    }
+}
+
+fn format_str(sections: &[StrSection], env: &mut Context) -> Expression {
+    use self::StrSection::*;
+
+    let mut buf = String::new();
+
+    for section in sections {
+        match section {
+            Literal(s) => buf.push_str(s),
+            Expr(s) => {
+                let mut parser = Parser::new(s.chars());
+
+                // Get contents
+                let expr = parser.parse_expr();
+                match expr {
+                    Some(expr) => {
+                        env.ascend_scope();
+                        let res = expr.eval(env);
+                        if res.is_exception() {
+                            return res;
+                        }
+                        env.descend_scope();
+                        let res = format!("{}", res);
+                        buf.push_str(&res);
+                    }
+                    None => {
+                        return Exception(Syntax(
+                            31,
+                            "format string must contain expression to interpolate".into(),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    Str(buf.into())
+}
+
+pub fn _format(args: &[Expression], env: &mut Context) -> Expression {
+    match args {
+        [Str(s)] => match split_str(s.as_ref()) {
+            Ok(sections) => format_str(&sections, env),
+            Err(ex) => Exception(ex),
+        },
         [x] => Exception(Signature("string".into(), x.type_of())),
         xs => Exception(Arity(1, xs.len())),
     }

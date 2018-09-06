@@ -13,14 +13,9 @@ fn main() {
     load(&mut ctx);
 
     // Load stdlib
-    let res = _import(
-        &[Expression::Str("rlisp-lib/loader.rlisp".into())],
-        &mut ctx,
-    );
-    if let err @ Expression::Exception(..) = res {
-        set_red();
-        println!("{}", err);
-        clear_color();
+    let res = _import(&[Expression::Str("rlisp-lib/loader.rl".into())], &mut ctx);
+    if let Expression::Exception(ex) = res {
+        print_err(&ex);
         return;
     }
 

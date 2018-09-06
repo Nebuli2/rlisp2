@@ -180,6 +180,15 @@ where
         let mut buf = String::new();
         while let Some(ch) = self.next_char() {
             match ch {
+                '\\' => match self.next_char() {
+                    Some(ch) => match ch {
+                        'r' => buf.push('\r'),
+                        'n' => buf.push('\n'),
+                        't' => buf.push('\t'),
+                        ch => buf.push(ch),
+                    },
+                    None => (),
+                },
                 '"' => return Some(Str(buf.into())),
                 ch => buf.push(ch),
             }
@@ -239,7 +248,7 @@ where
 /// Determines whether or not the specified character is a valid identifier.
 fn is_valid_ident(ch: char) -> bool {
     match ch {
-        '(' | ')' | '[' | ']' | '{' | '}' | '\'' | '"' | '`' | ',' | '.' | '#' => false,
+        '(' | ')' | '[' | ']' | '{' | '}' | '\'' | '"' | '`' | ',' => false,
         _ => true,
     }
 }

@@ -79,3 +79,14 @@
 ; factorial :: num -> num
 (define (factorial n)
     (product {1 to n}))
+
+; make-point :: num num -> point
+; point-x :: point -> num
+; point-y :: point -> num
+(define-struct point [x y])
+
+; printf :: string -> nil
+(define printf (compose print format))
+
+(define (is-even? n)
+    {{n % 2} = 0})

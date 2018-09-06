@@ -27,3 +27,7 @@
 * `026`: `define` must bind either a function or a symbol
 * `027`: Function parameters must be symbols
 * `028`: Reserved identifier
+* `029`: Struct does not contain specified field
+* `030`: Failed to define new struct; too many structs
+* `031`: Format string must contain expression to interpolate
+* `032`: Unclosed expression while interpolating string

@@ -1,6 +1,7 @@
 use context::Context;
 use expression::Expression;
 use im::ConsList;
+use std::rc::Rc;
 
 pub mod functions;
 pub mod macros;
@@ -13,17 +14,17 @@ pub fn load(ctx: &mut Context) {
 fn define_intrinsic(
     ctx: &mut Context,
     ident: impl ToString,
-    f: fn(&[Expression], &mut Context) -> Expression,
+    f: impl Fn(&[Expression], &mut Context) -> Expression + 'static,
 ) {
-    ctx.insert(ident.to_string(), Expression::Intrinsic(f));
+    ctx.insert(ident.to_string(), Expression::Intrinsic(Rc::new(f)));
 }
 
 fn define_macro(
     ctx: &mut Context,
     ident: impl ToString,
-    f: fn(&ConsList<Expression>, &mut Context) -> Expression,
+    f: impl Fn(ConsList<Expression>, &mut Context) -> Expression + 'static,
 ) {
-    ctx.insert(ident.to_string(), Expression::Macro(f));
+    ctx.insert(ident.to_string(), Expression::Macro(Rc::new(f)));
 }
 
 fn load_macros(ctx: &mut Context) {
@@ -36,6 +37,7 @@ fn load_macros(ctx: &mut Context) {
     define_macro(ctx, "quote", macros::_quote);
     define_macro(ctx, "let", macros::_let);
     define_macro(ctx, "try", macros::_try);
+    define_macro(ctx, "define-struct", macros::_define_struct);
 }
 
 fn load_functions(ctx: &mut Context) {
@@ -51,6 +53,13 @@ fn load_functions(ctx: &mut Context) {
     define_intrinsic(ctx, ">=", functions::_gte);
     define_intrinsic(ctx, "<", functions::_lt);
     define_intrinsic(ctx, "<=", functions::_lte);
+
+    // Boolean logic
+    define_intrinsic(ctx, "and", functions::_and);
+    define_intrinsic(ctx, "or", functions::_or);
+
+    define_intrinsic(ctx, "&&", functions::_and);
+    define_intrinsic(ctx, "||", functions::_or);
 
     // Lists
     define_intrinsic(ctx, "cons", functions::_cons);
@@ -71,4 +80,7 @@ fn load_functions(ctx: &mut Context) {
     define_intrinsic(ctx, "eval", functions::_eval);
     define_intrinsic(ctx, "import", functions::_import);
     define_intrinsic(ctx, "parse", functions::_parse);
+
+    define_intrinsic(ctx, "type-of", functions::_type_of);
+    define_intrinsic(ctx, "format", functions::_format);
 }

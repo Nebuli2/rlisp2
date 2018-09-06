@@ -2,7 +2,9 @@ use context::Context;
 use exception::Exception::*;
 use expression::Expression;
 use expression::Expression::*;
+use expression::StructData;
 use expression::ValidIdentifier;
+use std::rc::Rc;
 use util::{wrap_begin, Str};
 
 use im::ConsList;
@@ -37,7 +39,7 @@ fn create_lambda(
         .unwrap_or_else(|_| Exception(Syntax(17, "(lambda [args...] body)".into())))
 }
 
-pub fn _lambda(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
+pub fn _lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let params = list.tail().and_then(|list| list.head());
     let body = list.tail().and_then(|list| list.tail());
     // let vec: Vec<_> = list.iter().map(|expr| (*expr).clone()).collect();
@@ -52,7 +54,7 @@ pub fn _lambda(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
     }
 }
 
-pub fn _quote(list: &ConsList<Expression>, _: &mut Context) -> Expression {
+pub fn _quote(list: ConsList<Expression>, _: &mut Context) -> Expression {
     match list.len() - 1 {
         n if n != 1 => Exception(Arity(1, n)),
         _ => {
@@ -68,7 +70,7 @@ pub fn _quote(list: &ConsList<Expression>, _: &mut Context) -> Expression {
     }
 }
 
-pub fn _define(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
+pub fn _define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     list.tail()
         .and_then(|list| list.head())
         .map(|head| (*head).clone())
@@ -151,7 +153,7 @@ pub fn _define(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
         .unwrap_or_else(|ex| Exception(ex))
 }
 
-pub fn _env(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
+pub fn _env(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let arg = list
         .tail()
         .and_then(|tail| tail.head())
@@ -165,7 +167,7 @@ pub fn _env(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
     }).unwrap_or_else(|| Exception(Arity(1, 99)))
 }
 
-pub fn _if(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
+pub fn _if(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let cond = list
         .tail()
         .and_then(|tail| tail.head())
@@ -195,7 +197,7 @@ pub fn _if(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
     }
 }
 
-pub fn _cond(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
+pub fn _cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     ctx.ascend_scope();
 
     // Ensure that "else" branch works
@@ -243,7 +245,7 @@ pub fn _cond(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
     Expression::default()
 }
 
-pub fn _let(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
+pub fn _let(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let bindings = list.tail().and_then(|tail| tail.head());
     let body = list.tail().and_then(|list| list.tail());
 
@@ -329,7 +331,7 @@ pub fn _let(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
 //     Cons(ConsList::new())
 // }
 
-pub fn _try(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
+pub fn _try(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     // Check arity
     match list.len() - 1 {
         2 => {
@@ -352,6 +354,100 @@ pub fn _try(list: &ConsList<Expression>, ctx: &mut Context) -> Expression {
                     format!("{} is not a callable value", handler).into(),
                 ))
             }
+        }
+        n => Exception(Arity(2, n)),
+    }
+}
+
+pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expression {
+    match list.len() - 1 {
+        2 => {
+            // These are safe to unwrap as we just checked the length
+            let name = list.iter().nth(1).unwrap().clone();
+
+            let name_symbol;
+            if let Symbol(s) = name.as_ref() {
+                name_symbol = s;
+            } else {
+                return Exception(Signature("symbol".into(), name.type_of()));
+            }
+
+            let members = list.iter().nth(2).unwrap();
+
+            let members_symbols;
+            if let Cons(list) = members.as_ref() {
+                members_symbols = list;
+            } else {
+                return Exception(Signature("cons".into(), name.type_of()));
+            }
+
+            let mut member_names: Vec<Str> = Vec::with_capacity(members_symbols.len());
+            for ex in members_symbols.iter() {
+                match ex.as_ref() {
+                    Symbol(member) => member_names.push(member.clone()),
+                    other => return Exception(Signature("symbol".into(), other.type_of())),
+                }
+            }
+
+            // Create accessors
+            for (i, member) in member_names.iter().enumerate() {
+                let get = move |args: &[Expression], _: &mut Context| match args {
+                    [Struct(data)] => {
+                        let StructData { name: _, data } = data.as_ref();
+                        data.get(i).map(|expr| expr.clone()).unwrap_or_else(|| {
+                            Exception(Custom(29, "struct does not contain specified field".into()))
+                        })
+                    }
+                    // [x] => Exception(Signature(name_symbol.clone(), x.type_of())),
+                    xs => Exception(Arity(1, xs.len())),
+                };
+                let accessor = format!("{}-{}", name, member);
+                env.insert(accessor, Intrinsic(Rc::new(get)));
+            }
+
+            // Create constructor
+            let member_count = member_names.len();
+            let make = move |args: ConsList<Expression>, env: &mut Context| -> Expression {
+                let arg_count = args.len() - 1;
+                let arg_iter = args.iter().skip(1);
+                let mut member_data = Vec::with_capacity(arg_count);
+                for ex in arg_iter {
+                    let res = ex.eval(env);
+                    if res.is_exception() {
+                        return res;
+                    } else {
+                        member_data.push(res);
+                    }
+                }
+
+                let prefix_len = "make-".len();
+
+                match arg_count {
+                    n if n == member_count => {
+                        let make_expr = args.head(); // We have checked the length already
+                        match make_expr {
+                            Some(expr) => match expr.as_ref() {
+                                Symbol(ident) => {
+                                    let (_, name) = ident.split_at(prefix_len);
+                                    // let id = env.get_struct_id(name);
+                                    let name: Str = name.into();
+                                    let data = StructData {
+                                        name,
+                                        data: member_data,
+                                    };
+                                    Struct(Rc::new(data))
+                                }
+                                _ => unreachable!(),
+                            },
+                            _ => unreachable!(),
+                        }
+                    }
+                    n => Exception(Arity(member_count, n)),
+                }
+            };
+            let constructor = format!("make-{}", name_symbol);
+            env.insert(constructor, Macro(Rc::new(make)));
+            Expression::default()
         }
         n => Exception(Arity(2, n)),
     }

@@ -2,9 +2,16 @@ use context::Context;
 use exception::{self, Exception::*};
 use im::ConsList;
 use std::fmt;
+use std::rc::Rc;
 use util::Str;
 
 pub type Capture = HashMap<Str, Expression>;
+
+// #[derive(Clone)]
+pub struct StructData {
+    pub name: Str,
+    pub data: Vec<Expression>,
+}
 
 #[derive(Clone)]
 pub enum Expression {
@@ -19,15 +26,17 @@ pub enum Expression {
 
     // Represents an intrinsic function, taking a slice of expressions and
     // returning another expression.
-    Intrinsic(fn(&[Expression], &mut Context) -> Expression),
+    Intrinsic(Rc<Fn(&[Expression], &mut Context) -> Expression>),
 
     // Represents a macro that transforms the expression into a new expression.
-    Macro(fn(&ConsList<Expression>, &mut Context) -> Expression),
+    Macro(Rc<Fn(ConsList<Expression>, &mut Context) -> Expression>),
 
     // Represents an exception
     Exception(exception::Exception),
 
     Quote(Box<Expression>),
+
+    Struct(Rc<StructData>),
 }
 
 use self::Expression::*;
@@ -36,17 +45,18 @@ use std::collections::HashMap;
 impl Expression {
     pub fn type_of(&self) -> Str {
         match self {
-            Num(..) => "num",
-            Bool(..) => "bool",
-            Str(..) => "string",
-            Cons(..) => "list",
-            Exception(..) => "error",
-            Symbol(..) => "symbol",
-            Lambda(..) => "lambda",
-            Intrinsic(..) => "lambda",
-            Macro(..) => "lambda",
-            _ => "unknown",
-        }.into()
+            Num(..) => "num".into(),
+            Bool(..) => "bool".into(),
+            Str(..) => "string".into(),
+            Cons(..) => "cons".into(),
+            Exception(..) => "error".into(),
+            Symbol(..) => "symbol".into(),
+            Lambda(..) => "lambda".into(),
+            Intrinsic(..) => "lambda".into(),
+            Macro(..) => "lambda".into(),
+            Struct(data) => data.name.clone(),
+            _ => "unknown".into(),
+        }
     }
 
     /// Determines whether or not the expression is nil.
@@ -115,7 +125,7 @@ impl Expression {
                 if let Some(func) = list.head() {
                     let func = func.eval(ctx);
                     match func {
-                        Macro(f) => f(list, ctx),
+                        Macro(f) => f(list.clone(), ctx),
                         Intrinsic(f) => {
                             let args: Result<Vec<_>, _> = list
                                 .tail()
@@ -215,6 +225,14 @@ impl fmt::Display for Expression {
             Intrinsic(..) => write!(f, "<intrinsic>")?,
             Macro(..) => write!(f, "<macro>")?,
             Exception(ex) => write!(f, "error[{:03}]: {}", ex.error_code(), ex)?,
+            Struct(data) => {
+                let StructData { name, data } = data.as_ref();
+                write!(f, "(make-{}", name)?;
+                for param in data.iter() {
+                    write!(f, " {}", param)?;
+                }
+                write!(f, ")")?;
+            }
         }
         Ok(())
     }
@@ -254,6 +272,18 @@ impl PartialEq for Expression {
             }
             (Quote(a), Quote(b)) => a == b,
             (Cons(a), Cons(b)) => a == b,
+            (Struct(d1), Struct(d2)) => {
+                let StructData {
+                    name: name1,
+                    data: data1,
+                } = d1.as_ref();
+                let StructData {
+                    name: name2,
+                    data: data2,
+                } = d2.as_ref();
+
+                name1 == name2 && data1 == data2
+            }
             _ => false,
         }
     }
@@ -286,3 +316,55 @@ impl ValidIdentifier for Expression {
         }
     }
 }
+
+// Conversions
+
+macro_rules! impl_num_to_expr {
+    ($($type:ty),*) => {
+        $(
+            impl Into<Expression> for $type {
+                fn into(self) -> Expression {
+                    let n = self as f64;
+                    Num(n)
+                }
+            }
+        )*
+    };
+}
+
+impl_num_to_expr!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64);
+
+impl Into<Expression> for bool {
+    fn into(self) -> Expression {
+        Bool(self)
+    }
+}
+
+impl Into<Expression> for Str {
+    fn into(self) -> Expression {
+        Str(self)
+    }
+}
+
+impl Into<Expression> for String {
+    fn into(self) -> Expression {
+        Str(self.into())
+    }
+}
+
+impl<'a> Into<Expression> for &'a str {
+    fn into(self) -> Expression {
+        Str(self.into())
+    }
+}
+
+// impl<T, U> From<T> for Expression
+// where
+//     T: Iterator<Item = U>,
+//     U: Into<Expression>,
+// {
+//     fn from(t: T) -> Expression {
+
+//         unimplemented!()
+//     }
+// }
