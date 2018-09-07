@@ -1,5 +1,0 @@
-(define (fact n)
-    (define (fact-inner n m)
-        (cond [{n = 0} m]
-              [else (fac-inner {n - 1} {n * m})]))
-    (fact-inner n 1))

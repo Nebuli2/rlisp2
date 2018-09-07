@@ -365,11 +365,18 @@ pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expressi
             // These are safe to unwrap as we just checked the length
             let name = list.iter().nth(1).unwrap().clone();
 
-            let name_symbol;
+            let name_str;
             if let Symbol(s) = name.as_ref() {
-                name_symbol = s;
+                name_str = s;
             } else {
                 return Exception(Signature("symbol".into(), name.type_of()));
+            }
+
+            let id;
+            if let Some(id_inner) = env.define_struct(name_str) {
+                id = id_inner;
+            } else {
+                return Exception(Custom(31, "could not define struct".into()));
             }
 
             let members = list.iter().nth(2).unwrap();
@@ -404,6 +411,21 @@ pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expressi
                 let accessor = format!("{}-{}", name, member);
                 env.insert(accessor, Intrinsic(Rc::new(get)));
             }
+
+            // Create is-type function
+            let check = move |args: &[Expression], env: &mut Context| match args {
+                [Struct(data)] => {
+                    let StructData { name, data: _ } = data.as_ref();
+                    if let Some(struct_id) = env.get_struct_id(name) {
+                        Bool(struct_id == id)
+                    } else {
+                        Bool(false)
+                    }
+                }
+                _ => Bool(false),
+            };
+            let check_name = format!("is-{}?", name_str);
+            env.insert(check_name, Intrinsic(Rc::new(check)));
 
             // Create constructor
             let member_count = member_names.len();
@@ -445,7 +467,7 @@ pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expressi
                     n => Exception(Arity(member_count, n)),
                 }
             };
-            let constructor = format!("make-{}", name_symbol);
+            let constructor = format!("make-{}", name_str);
             env.insert(constructor, Macro(Rc::new(make)));
             Expression::default()
         }

@@ -1,6 +1,10 @@
 use exception::Exception::*;
 use expression::Expression::{self, *};
 use im::ConsList;
+use std::iter::Peekable;
+
+#[macro_use]
+use util::*;
 
 pub mod preprocessor;
 
@@ -8,7 +12,7 @@ pub struct Parser<I>
 where
     I: Iterator<Item = char>,
 {
-    iter: I,
+    iter: Peekable<I>,
     stack: Vec<char>,
     name: Option<String>,
     row: usize,
@@ -21,7 +25,7 @@ where
 {
     pub fn new(iter: I) -> Self {
         Self {
-            iter,
+            iter: iter.peekable(),
             stack: Vec::new(),
             name: None,
             row: 1,
@@ -31,7 +35,7 @@ where
 
     pub fn with_name(iter: I, name: String) -> Self {
         Self {
-            iter,
+            iter: iter.peekable(),
             stack: Vec::new(),
             name: Some(name),
             row: 1,
@@ -58,6 +62,10 @@ where
         ch
     }
 
+    fn peek_char(&mut self) -> Option<char> {
+        self.iter.peek().map(|&ch| ch)
+    }
+
     fn unread(&mut self, ch: char) {
         self.stack.push(ch)
     }
@@ -71,6 +79,11 @@ where
             '\'' => self.parse_expr().map(|expr| Quote(Box::new(expr))),
             '(' => self.parse_cons(')'),
             '[' => self.parse_cons(']'),
+            '#' => {
+                let ex = self.parse_expr()?;
+                let list = cons![Symbol("format".into()), ex];
+                Some(Cons(list))
+            }
             '"' => self.parse_str(),
             ')' | ']' => Some(Exception(Syntax(5, format!("illegal list close").into()))),
             ';' => {

@@ -40,8 +40,29 @@ fn load_macros(ctx: &mut Context) {
     define_macro(ctx, "define-struct", macros::_define_struct);
 }
 
+macro_rules! define_intrinsics {
+    {
+        context: $ctx:expr,
+        $($name:ident: $func:expr),*,
+    } => ({
+        $(
+            define_intrinsic($ctx, stringify!($name), $func);
+        )*
+    });
+    {
+        context: $ctx:expr,
+        $($name:ident: $func:expr),*
+    } => ({
+        $(
+            define_intrinsic($ctx, stringify!($name), $func);
+        )*
+    });
+}
+
 fn load_functions(ctx: &mut Context) {
-    // Mathematical functions
+    use self::functions::*;
+
+    // Mathematical operators
     define_intrinsic(ctx, "+", functions::_add);
     define_intrinsic(ctx, "-", functions::_sub);
     define_intrinsic(ctx, "*", functions::_mul);
@@ -54,9 +75,28 @@ fn load_functions(ctx: &mut Context) {
     define_intrinsic(ctx, "<", functions::_lt);
     define_intrinsic(ctx, "<=", functions::_lte);
 
+    // Mathematical functions
+    define_intrinsics! {
+        context: ctx,
+
+        // Mathematical functions
+        sin: _sin,
+        cos: _cos,
+        tan: _tan,
+        csc: _csc,
+        sec: _sec,
+        cot: _cot,
+        asin: _asin,
+        acos: _acos,
+        atan: _atan,
+        sqrt: _sqrt,
+
+        // Boolean logic
+        and: functions::_and,
+        or: functions::_or,
+    }
+
     // Boolean logic
-    define_intrinsic(ctx, "and", functions::_and);
-    define_intrinsic(ctx, "or", functions::_or);
 
     define_intrinsic(ctx, "&&", functions::_and);
     define_intrinsic(ctx, "||", functions::_or);
@@ -83,4 +123,5 @@ fn load_functions(ctx: &mut Context) {
 
     define_intrinsic(ctx, "type-of", functions::_type_of);
     define_intrinsic(ctx, "format", functions::_format);
+    define_intrinsic(ctx, "set!", functions::_set);
 }

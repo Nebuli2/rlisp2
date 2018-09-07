@@ -596,3 +596,62 @@ pub fn _format(args: &[Expression], env: &mut Context) -> Expression {
         xs => Exception(Arity(1, xs.len())),
     }
 }
+
+pub fn _set(args: &[Expression], env: &mut Context) -> Expression {
+    match args {
+        [Symbol(s), ex] => {
+            if let Some(mut reference) = env.get_mut(s) {
+                *reference = ex.clone();
+                Expression::default()
+            } else {
+                Exception(Undefined(s.clone()))
+            }
+        }
+        [x, _] => Exception(Signature("symbol".into(), x.type_of())),
+        xs => Exception(Arity(2, xs.len())),
+    }
+}
+
+pub fn _sqrt(args: &[Expression], _: &mut Context) -> Expression {
+    unary_fn(args, f64::sqrt)
+}
+
+pub fn _sin(args: &[Expression], _: &mut Context) -> Expression {
+    unary_fn(args, f64::sin)
+}
+
+pub fn _cos(args: &[Expression], _: &mut Context) -> Expression {
+    unary_fn(args, f64::cos)
+}
+
+pub fn _tan(args: &[Expression], _: &mut Context) -> Expression {
+    unary_fn(args, f64::tan)
+}
+
+pub fn _csc(args: &[Expression], _: &mut Context) -> Expression {
+    unary_fn(args, |x| 1.0 / x.sin())
+}
+
+pub fn _sec(args: &[Expression], _: &mut Context) -> Expression {
+    unary_fn(args, |x| 1.0 / x.cos())
+}
+
+pub fn _cot(args: &[Expression], _: &mut Context) -> Expression {
+    unary_fn(args, |x| 1.0 / x.tan())
+}
+
+pub fn _asin(args: &[Expression], _: &mut Context) -> Expression {
+    unary_fn(args, f64::asin)
+}
+
+pub fn _acos(args: &[Expression], _: &mut Context) -> Expression {
+    unary_fn(args, f64::acos)
+}
+
+pub fn _atan(args: &[Expression], _: &mut Context) -> Expression {
+    unary_fn(args, f64::atan)
+}
+
+pub fn _atan2(args: &[Expression], _: &mut Context) -> Expression {
+    binary_fn(args, f64::atan2)
+}

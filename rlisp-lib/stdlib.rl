@@ -90,3 +90,8 @@
 
 (define (is-even? n)
     {{n % 2} = 0})
+
+(define \ lambda)
+(define x (\()
+    (println "Hello world")
+    (println "Goodbye world")))

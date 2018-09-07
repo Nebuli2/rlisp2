@@ -35,12 +35,18 @@ impl Context {
     /// Attempts to retrieve the value stored at the specified key in the
     /// `Context`.
     pub fn get(&self, key: impl AsRef<str>) -> Option<&Expression> {
-        let key = key.as_ref();
-
         self.scopes
             .iter()
             .rev()
-            .filter_map(|scope| scope.bindings.get(key))
+            .filter_map(|scope| scope.bindings.get(key.as_ref()))
+            .next()
+    }
+
+    pub fn get_mut(&mut self, key: impl AsRef<str>) -> Option<&mut Expression> {
+        self.scopes
+            .iter_mut()
+            .rev()
+            .filter_map(|scope| scope.bindings.get_mut(key.as_ref()))
             .next()
     }
 
@@ -63,13 +69,11 @@ impl Context {
         }
     }
 
-    pub fn get_struct_id(&self, name: impl ToString) -> Option<StructId> {
-        let key = name.to_string();
-
+    pub fn get_struct_id(&self, name: impl AsRef<str>) -> Option<StructId> {
         self.scopes
             .iter()
             .rev()
-            .filter_map(|scope| scope.structs.get(&key))
+            .filter_map(|scope| scope.structs.get(name.as_ref()))
             .next()
             .map(Clone::clone)
     }
