@@ -33,8 +33,8 @@ fn create_app<'a>() -> ArgMatches<'a> {
 
 pub fn run() {
     let matches = create_app();
-    
-    let lib_loc = matches.value_of("LIB_LOC").unwrap_or_else(|| "rlisp-lib/loader.rl");
+
+    let lib_loc = matches.value_of("lib-loc").unwrap_or_else(|| "rlisp-lib/loader.rl");
 
     let mut ctx = init_context();
     let res = _import(&[Expression::Str(lib_loc.into())], &mut ctx);
