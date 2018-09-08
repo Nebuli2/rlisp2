@@ -1,7 +1,5 @@
 [workspace]
-members = [
-    "rlisp-core"
-]
+members = ["rlisp-core"]
 
 [package]
 name = "rlisp2"
