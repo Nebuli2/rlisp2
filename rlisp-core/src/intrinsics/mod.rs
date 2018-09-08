@@ -6,9 +6,15 @@ use std::rc::Rc;
 pub mod functions;
 pub mod macros;
 
-pub fn load(ctx: &mut Context) {
+pub fn load_intrinsics(ctx: &mut Context) {
     load_macros(ctx);
     load_functions(ctx);
+}
+
+pub fn init_context() -> Context {
+    let mut ctx = Context::new();
+    load_intrinsics(&mut ctx);
+    ctx
 }
 
 fn define_intrinsic(

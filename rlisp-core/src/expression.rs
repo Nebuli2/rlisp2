@@ -206,35 +206,34 @@ fn eval_lambda(
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Quote(expr) => write!(f, "'{}", expr)?,
-            Bool(b) => write!(f, "{}", b)?,
-            Num(n) => write!(f, "{}", n)?,
-            Str(s) => write!(f, "\"{}\"", s)?,
-            Symbol(s) => write!(f, "{}", s)?,
+            Quote(expr) => write!(f, "'{}", expr),
+            Bool(b) => write!(f, "{}", b),
+            Num(n) => write!(f, "{}", n),
+            Str(s) => write!(f, "\"{}\"", s),
+            Symbol(s) => write!(f, "{}", s),
             Cons(list) => {
                 let strs: Vec<_> = list.iter().map(|expr| expr.to_string()).collect();
                 let inner = strs.join(" ");
-                write!(f, "({})", inner)?;
+                write!(f, "({})", inner)
             }
             Lambda(params, body, ..) => {
                 let params_vec: Vec<_> =
                     params.iter().map(|param| param.as_ref().clone()).collect();
                 let inner = params_vec.join(" ");
-                write!(f, "(λ [{}] {})", inner, body)?;
+                write!(f, "(λ [{}] {})", inner, body)
             }
-            Intrinsic(..) => write!(f, "<intrinsic>")?,
-            Macro(..) => write!(f, "<macro>")?,
-            Exception(ex) => write!(f, "error[{:03}]: {}", ex.error_code(), ex)?,
+            Intrinsic(..) => write!(f, "<intrinsic>"),
+            Macro(..) => write!(f, "<macro>"),
+            Exception(ex) => write!(f, "error[{:03}]: {}", ex.error_code(), ex),
             Struct(data) => {
                 let StructData { name, data } = data.as_ref();
                 write!(f, "(make-{}", name)?;
                 for param in data.iter() {
                     write!(f, " {}", param)?;
                 }
-                write!(f, ")")?;
+                write!(f, ")")
             }
         }
-        Ok(())
     }
 }
 
@@ -250,6 +249,11 @@ impl fmt::Debug for Expression {
                 let strs: Vec<_> = list.iter().map(|expr| format!("{:?}", expr)).collect();
                 let inner = strs.join(", ");
                 write!(f, "<Cons:[{}]>", inner)
+            }
+            Struct(data) => {
+                let StructData { name, data } = data.as_ref();
+                write!(f, "<{}:{:?}>", name, data)?;
+                Ok(())
             }
             other => write!(f, "{}", other),
         }

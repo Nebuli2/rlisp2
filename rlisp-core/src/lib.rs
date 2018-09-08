@@ -12,7 +12,7 @@ pub mod parser;
 
 pub mod prelude {
     pub use {
-        context::Context, exception::Exception, expression::Expression, intrinsics::load,
+        context::Context, exception::Exception, expression::Expression, intrinsics::init_context,
         parser::Parser, util::nil,
     };
 }

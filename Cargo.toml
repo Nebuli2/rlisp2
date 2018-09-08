@@ -10,3 +10,4 @@ authors = ["benhetherington"]
 
 [dependencies]
 rlisp-core = { path = "./rlisp-core/" }
+clap = { version = "2.32.0", features = ["yaml"] }
