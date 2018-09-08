@@ -7,13 +7,13 @@ use rlisp_core::{
 use repl::run_repl;
 
 fn create_app<'a>() -> ArgMatches<'a> {
-    App::new("RLisp")
-        .version("1.0")
-        .author("Benjamin Hetherington <b.w.hetherington@gmail.com>")
-        .about("A simple Lisp interpreter made in Rust, loosely based on Scheme")
+    App::new(env!("CARGO_PKG_NAME"))
+        .version(env!("CARGO_PKG_VERSION"))
+        .author(env!("CARGO_PKG_AUTHORS"))
+        .about(env!("CARGO_PKG_DESCRIPTION"))
         .arg(Arg::with_name("lib-loc")
-            .short("l")
-            .long("lib-loc")
+            .short("L")
+            .long("lib")
             .value_name("LIB_LOC")
             .help("Sets the location to load the standard library from")
             .takes_value(true)
@@ -34,7 +34,7 @@ fn create_app<'a>() -> ArgMatches<'a> {
 pub fn run() {
     let matches = create_app();
 
-    let lib_loc = matches.value_of("lib-loc").unwrap_or_else(|| "rlisp-lib/loader.rl");
+    let lib_loc = matches.value_of("lib").unwrap_or_else(|| "rlisp-lib/loader.rl");
 
     let mut ctx = init_context();
     let res = _import(&[Expression::Str(lib_loc.into())], &mut ctx);

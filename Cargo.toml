@@ -6,7 +6,8 @@ members = [
 [package]
 name = "rlisp2"
 version = "0.1.0"
-authors = ["benhetherington"]
+authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
+description = "A simple Lisp interpreter made in Rust, loosely based on Scheme"
 
 [dependencies]
 rlisp-core = { path = "./rlisp-core/" }
