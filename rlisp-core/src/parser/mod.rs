@@ -2,9 +2,8 @@ use exception::Exception::*;
 use expression::Expression::{self, *};
 use im::ConsList;
 use std::iter::Peekable;
-
-#[macro_use]
-use util::*;
+use std::rc::Rc;
+use util::wrap_begin;
 
 pub mod preprocessor;
 
@@ -70,13 +69,25 @@ where
         self.stack.push(ch)
     }
 
+    pub fn parse_all(&mut self) -> Expression {
+        let mut exprs = ConsList::new();
+        while let Some(expr) = self.parse_expr() {
+            if let ex @ Exception(_) = expr {
+                return ex;
+            } else {
+                exprs = exprs + ConsList::singleton(expr);
+            }
+        }
+        wrap_begin(exprs)
+    }
+
     pub fn parse_expr(&mut self) -> Option<Expression> {
         // Ignore whitespace
         self.read_to(|ch| !ch.is_whitespace());
 
         // Look at char
         self.next_char().and_then(|ch| match ch {
-            '\'' => self.parse_expr().map(|expr| Quote(Box::new(expr))),
+            '\'' => self.parse_expr().map(|expr| Quote(Rc::new(expr))),
             '(' => self.parse_cons(')'),
             '[' => self.parse_cons(']'),
             '#' => {
@@ -85,7 +96,10 @@ where
                 Some(Cons(list))
             }
             '"' => self.parse_str(),
-            ')' | ']' => Some(Exception(Syntax(5, format!("illegal list close").into()))),
+            ')' | ']' | '}' => Some(Exception(Syntax(
+                5,
+                format!("unexpected list close").into(),
+            ))),
             ';' => {
                 self.read_to(|ch| ch == '\n');
                 self.parse_expr()
@@ -171,22 +185,30 @@ where
 
     pub fn parse_cons(&mut self, end: char) -> Option<Expression> {
         let mut list = ConsList::new();
+        let mut closed = false;
         while let Some(ch) = self.next_char() {
             match ch {
                 // Skip whitespace
                 ch if ch.is_whitespace() => (),
-                ch if ch == end => break,
+                ch if ch == end => {
+                    closed = true;
+                    break;
+                }
                 ch => {
                     self.unread(ch);
                     match self.parse_expr() {
                         Some(ref expr) if expr.is_exception() => return Some(expr.clone()),
                         Some(expr) => list = list + ConsList::singleton(expr),
-                        _ => return Some(Exception(Syntax(6, "unclosed list".into()))),
+                        None => return Some(Exception(Syntax(6, "unclosed list".into()))),
                     }
                 }
             }
         }
-        Some(Cons(list))
+        if closed {
+            Some(Cons(list))
+        } else {
+            Some(Exception(Syntax(6, "unclosed list".into())))
+        }
     }
 
     pub fn parse_str(&mut self) -> Option<Expression> {
@@ -216,7 +238,7 @@ where
                 match s.as_str() {
                     "#t" | "true" => Bool(true),
                     "#f" | "false" => Bool(false),
-                    "nil" | "empty" => Quote(Box::new(Cons(ConsList::new()))),
+                    "nil" | "empty" => Quote(Rc::new(Cons(ConsList::new()))),
                     _ => {
                         // Attempt to parse number
                         if let Ok(num) = s.parse::<f64>() {

@@ -63,19 +63,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rlisp"
+version = "0.1.0"
+dependencies = [
+ "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rlisp-core 0.1.0",
+]
+
+[[package]]
 name = "rlisp-core"
 version = "0.1.0"
 dependencies = [
  "im 10.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "termcolor 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "rlisp2"
-version = "0.1.0"
-dependencies = [
- "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rlisp-core 0.1.0",
 ]
 
 [[package]]

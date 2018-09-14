@@ -34,33 +34,36 @@ fn define_macro(
 }
 
 fn load_macros(ctx: &mut Context) {
-    define_macro(ctx, "define", macros::_define);
-    define_macro(ctx, "lambda", macros::_lambda);
-    define_macro(ctx, "λ", macros::_lambda);
-    define_macro(ctx, "env", macros::_env);
-    define_macro(ctx, "if", macros::_if);
-    define_macro(ctx, "cond", macros::_cond);
-    define_macro(ctx, "quote", macros::_quote);
-    define_macro(ctx, "let", macros::_let);
-    define_macro(ctx, "try", macros::_try);
-    define_macro(ctx, "define-struct", macros::_define_struct);
+    use self::macros::*;
+    define_macro(ctx, "define", _define);
+    define_macro(ctx, "lambda", _lambda);
+    define_macro(ctx, "λ", _lambda);
+    define_macro(ctx, "env", _env);
+    define_macro(ctx, "if", _if);
+    define_macro(ctx, "cond", _cond);
+    define_macro(ctx, "quote", _quote);
+    define_macro(ctx, "let", _let);
+    define_macro(ctx, "try", _try);
+    define_macro(ctx, "define-struct", _define_struct);
+    // define_macro(ctx, "set!", _set);
+    define_macro(ctx, "begin", _begin);
 }
 
 macro_rules! define_intrinsics {
     {
         context: $ctx:expr,
-        $($name:ident: $func:expr),*,
+        $($name:expr => $func:expr),*,
     } => ({
         $(
-            define_intrinsic($ctx, stringify!($name), $func);
+            define_intrinsic($ctx, $name, $func);
         )*
     });
     {
         context: $ctx:expr,
-        $($name:ident: $func:expr),*
+        $($name:expr => $func:expr),*
     } => ({
         $(
-            define_intrinsic($ctx, stringify!($name), $func);
+            define_intrinsic($ctx, $name, $func);
         )*
     });
 }
@@ -86,26 +89,29 @@ fn load_functions(ctx: &mut Context) {
         context: ctx,
 
         // Mathematical functions
-        sin: _sin,
-        cos: _cos,
-        tan: _tan,
-        csc: _csc,
-        sec: _sec,
-        cot: _cot,
-        asin: _asin,
-        acos: _acos,
-        atan: _atan,
-        sqrt: _sqrt,
+        "sin" => _sin,
+        "cos" => _cos,
+        "tan" => _tan,
+        "csc" => _csc,
+        "sec" => _sec,
+        "cot" => _cot,
+        "asin" => _asin,
+        "acos" => _acos,
+        "atan" => _atan,
+        "sqrt" => _sqrt,
 
         // Boolean logic
-        and: functions::_and,
-        or: functions::_or,
+        "and" => _and,
+        "&&" => _and,
+        "or" => _or,
+        "||" => _or,
+        "not" => _not,
+
+        "display-pretty" => _display_pretty,
+        "set!" => _set,
     }
 
     // Boolean logic
-
-    define_intrinsic(ctx, "&&", functions::_and);
-    define_intrinsic(ctx, "||", functions::_or);
 
     // Lists
     define_intrinsic(ctx, "cons", functions::_cons);
@@ -114,8 +120,8 @@ fn load_functions(ctx: &mut Context) {
     define_intrinsic(ctx, "tail", functions::_tail);
 
     define_intrinsic(ctx, "exit", functions::_exit);
-    define_intrinsic(ctx, "begin", functions::_begin);
     define_intrinsic(ctx, "display", functions::_display);
+    define_intrinsic(ctx, "display-debug", functions::_display_debug);
     define_intrinsic(ctx, "newline", functions::_newline);
     define_intrinsic(ctx, "readline", functions::_readline);
 
@@ -129,5 +135,4 @@ fn load_functions(ctx: &mut Context) {
 
     define_intrinsic(ctx, "type-of", functions::_type_of);
     define_intrinsic(ctx, "format", functions::_format);
-    define_intrinsic(ctx, "set!", functions::_set);
 }

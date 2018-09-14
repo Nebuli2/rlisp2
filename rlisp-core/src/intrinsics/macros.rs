@@ -1,13 +1,13 @@
 use context::Context;
+use exception::Exception;
 use exception::Exception::*;
 use expression::Expression;
 use expression::Expression::*;
 use expression::StructData;
 use expression::ValidIdentifier;
+use im::ConsList;
 use std::rc::Rc;
 use util::{wrap_begin, Str};
-
-use im::ConsList;
 
 fn create_lambda(
     params: ConsList<Expression>,
@@ -34,7 +34,7 @@ fn create_lambda(
             } else {
                 Some(capture)
             };
-            Lambda(params, Box::new(body.clone()), capture)
+            Lambda(params, Rc::new(body.clone()), capture)
         })
         .unwrap_or_else(|_| Exception(Syntax(17, "(lambda [args...] body)".into())))
 }
@@ -60,10 +60,7 @@ pub fn _quote(list: ConsList<Expression>, _: &mut Context) -> Expression {
         _ => {
             let expr = list.tail().and_then(|list| list.head());
             match expr {
-                Some(expr) => {
-                    let bx = Box::new((*expr).clone());
-                    Quote(bx)
-                }
+                Some(expr) => Quote(Rc::new((*expr).clone())),
                 _ => Exception(Arity(1, 0)),
             }
         }
@@ -162,7 +159,7 @@ pub fn _env(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         Symbol(ident) => ctx
             .get(ident)
             .map(|expr| expr.clone())
-            .unwrap_or_else(|| Quote(Box::new(Cons(ConsList::new())))),
+            .unwrap_or_else(|| Quote(Rc::new(Cons(ConsList::new())))),
         _ => Exception(Signature("symbol".into(), arg.type_of())),
     }).unwrap_or_else(|| Exception(Arity(1, 99)))
 }
@@ -341,9 +338,12 @@ pub fn _try(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
             if handler.is_callable() {
                 let expr = expr.eval(ctx);
                 if let Exception(ex) = expr {
-                    let handle_list = ConsList::from(vec![handler, Str(ex.to_string().into())]);
-                    let handle_expr = Cons(handle_list);
-                    handle_expr.eval(ctx)
+                    let expr = Struct(Rc::new(StructData {
+                        name: "error".into(),
+                        data: vec![(ex.error_code() as f64).into(), ex.to_string().into()],
+                    }));
+                    let handle_list = cons![handler, expr];
+                    Cons(handle_list).eval(ctx)
                 } else {
                     expr
                 }
@@ -473,4 +473,61 @@ pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expressi
         }
         n => Exception(Arity(2, n)),
     }
+}
+
+// pub fn _set(args: &[Expression], env: &mut Context) -> Expression {
+//     match args {
+//         [Symbol(s), ex] => {
+//             if let Some(mut reference) = env.get_mut(s) {
+//                 *reference = ex.clone();
+//                 Expression::default()
+//             } else {
+//                 Exception(Undefined(s.clone()))
+//             }
+//         }
+//         [x, _] => Exception(Signature("symbol".into(), x.type_of())),
+//         xs => Exception(Arity(2, xs.len())),
+//     }
+// }
+
+pub fn _set(list: ConsList<Expression>, env: &mut Context) -> Expression {
+    fn set_helper(list: ConsList<Expression>, env: &mut Context) -> Result<Expression, Exception> {
+        match list.len() - 1 {
+            2 => {
+                let ident = list.iter().nth(1).ok_or_else(|| Arity(2, 0))?;
+                let ident_str = match ident.as_ref() {
+                    Symbol(s) => Ok(s),
+                    other => Err(Signature("symbol".into(), other.type_of())),
+                }?;
+                let expr = list.iter().nth(2).ok_or_else(|| Arity(2, 1))?;
+                let res = expr.eval(env);
+
+                if let Exception(ex) = res {
+                    return Err(ex);
+                }
+
+                let mut ident_ref = env
+                    .get_mut(ident_str)
+                    .ok_or_else(|| Undefined(ident_str.clone()))?;
+                *ident_ref = res;
+
+                Ok(Expression::default())
+            }
+            n => Err(Arity(2, n)),
+        }
+    }
+
+    set_helper(list, env).unwrap_or_else(|ex| Exception(ex))
+}
+
+pub fn _begin(list: ConsList<Expression>, env: &mut Context) -> Expression {
+    let mut last_expr = Expression::default();
+    for expr in list.tail().unwrap_or_else(|| ConsList::new()) {
+        let result = expr.eval(env);
+        if result.is_exception() {
+            return result;
+        }
+        last_expr = result;
+    }
+    last_expr
 }

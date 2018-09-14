@@ -1,7 +1,7 @@
 use rlisp_core::prelude::*;
+use rlisp_core::util::{print_err, print_prompt};
 use std::io::prelude::*;
-use std::io::{stdout, stdin};
-use rlisp_core::util::{set_green, clear_color, print_err};
+use std::io::{stdin, stdout};
 
 pub fn run_repl(ctx: &mut Context) {
     let mut line = String::new();
@@ -13,25 +13,23 @@ pub fn run_repl(ctx: &mut Context) {
                 _ => None,
             })
             .unwrap_or_else(|| "rlisp> ".to_string());
-        set_green();
-        print!("{}", prompt);
-        clear_color();
+        print_prompt(prompt);
         stdout().flush().expect("failed to flush stdout");
         stdin().read_line(&mut line).expect("failed to read line");
         {
             let mut parser = Parser::new(line.chars());
-            parser.parse_expr().map(|expr| {
-                let result = expr.eval(ctx);
-                match result {
-                    Expression::Exception(ex) => {
-                        print_err(&ex);
-                    }
-                    ref res if !res.is_nil() => {
-                        println!("{}", res);
-                    }
-                    _ => {}
+            let expr = parser.parse_all();
+            let result = expr.eval(ctx);
+            match &result {
+                Expression::Exception(ex) => {
+                    print_err(&ex);
                 }
-            });
+                ref res if !res.is_nil() => {
+                    println!("= {}", res);
+                }
+                _ => {}
+            }
+            ctx.insert("_", result);
         }
         line.clear();
     }

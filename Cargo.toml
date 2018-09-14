@@ -2,7 +2,7 @@
 members = ["rlisp-core"]
 
 [package]
-name = "rlisp2"
+name = "rlisp"
 version = "0.1.0"
 authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
 description = "A simple Lisp interpreter made in Rust, loosely based on Scheme"

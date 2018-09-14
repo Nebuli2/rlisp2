@@ -1,5 +1,5 @@
 use context::Context;
-use exception::{self, Exception::*};
+use exception::{self, Exception, Exception::*};
 use im::ConsList;
 use std::fmt;
 use std::rc::Rc;
@@ -7,7 +7,6 @@ use util::Str;
 
 pub type Capture = HashMap<Str, Expression>;
 
-// #[derive(Clone)]
 pub struct StructData {
     pub name: Str,
     pub data: Vec<Expression>,
@@ -22,7 +21,7 @@ pub enum Expression {
 
     Cons(ConsList<Expression>),
 
-    Lambda(ConsList<Str>, Box<Expression>, Option<Capture>),
+    Lambda(ConsList<Str>, Rc<Expression>, Option<Capture>),
 
     // Represents an intrinsic function, taking a slice of expressions and
     // returning another expression.
@@ -34,7 +33,7 @@ pub enum Expression {
     // Represents an exception
     Exception(exception::Exception),
 
-    Quote(Box<Expression>),
+    Quote(Rc<Expression>),
 
     Struct(Rc<StructData>),
 }
@@ -199,7 +198,10 @@ fn eval_lambda(
             ctx.descend_scope();
             res
         }
-        (expected, found) => Exception(Arity(expected, found)),
+        (expected, found) => {
+            println!("{:?}", Lambda(params.clone(), Rc::new(body.clone()), None));
+            Exception(Arity(expected, found))
+        }
     }
 }
 
@@ -220,7 +222,7 @@ impl fmt::Display for Expression {
                 let params_vec: Vec<_> =
                     params.iter().map(|param| param.as_ref().clone()).collect();
                 let inner = params_vec.join(" ");
-                write!(f, "(λ [{}] {})", inner, body)
+                write!(f, "(lambda [{}] {})", inner, body)
             }
             Intrinsic(..) => write!(f, "<intrinsic>"),
             Macro(..) => write!(f, "<macro>"),
@@ -372,3 +374,12 @@ impl<'a> Into<Expression> for &'a str {
 //         unimplemented!()
 //     }
 // }
+
+impl Into<Result<Expression, Exception>> for Expression {
+    fn into(self) -> Result<Expression, Exception> {
+        match self {
+            Exception(ex) => Err(ex),
+            other => Ok(other),
+        }
+    }
+}

@@ -3,7 +3,7 @@
 
 ; map-empty :: k v -> (map k v)
 (define (map-empty k)
-    empty)
+    nil)
 
 ; map-insert :: k v (map k v) -> (map k v)
 (define (map-insert k v m)

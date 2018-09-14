@@ -31,3 +31,6 @@
 * `030`: Failed to define new struct; too many structs
 * `031`: Format string must contain expression to interpolate
 * `032`: Unclosed expression while interpolating string
+* `033`: 
+* `034`: Unknown color
+* `035`: Unknown style

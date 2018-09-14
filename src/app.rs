@@ -1,10 +1,6 @@
 use clap::{App, Arg, ArgMatches};
-use rlisp_core::{
-    prelude::*,
-    intrinsics::functions::_import,
-    util::print_err
-};
 use repl::run_repl;
+use rlisp_core::{intrinsics::functions::_import, prelude::*, util::print_err};
 
 fn create_app<'a>() -> ArgMatches<'a> {
     App::new(env!("CARGO_PKG_NAME"))
@@ -33,11 +29,13 @@ fn create_app<'a>() -> ArgMatches<'a> {
 
 pub fn run() {
     let matches = create_app();
-
-    let lib_loc = matches.value_of("lib").unwrap_or_else(|| "rlisp-lib/loader.rl");
+    let lib_loc = matches
+        .value_of("lib")
+        .unwrap_or_else(|| "rlisp-lib/loader.rl");
 
     let mut ctx = init_context();
     let res = _import(&[Expression::Str(lib_loc.into())], &mut ctx);
+
     if let Expression::Exception(ex) = res {
         print_err(&ex);
         return;
@@ -53,11 +51,17 @@ pub fn run() {
             }
 
             if matches.is_present("interactive") {
-                run_repl(&mut ctx);
+                let s = "(start-repl)";
+                let mut parser = Parser::new(s.chars());
+                parser.parse_expr().map(|expr| expr.eval(&mut ctx));
+                // run_repl(&mut ctx);
             }
         }
         None => {
-            run_repl(&mut ctx);
+            let s = "(start-repl)";
+            let mut parser = Parser::new(s.chars());
+            parser.parse_expr().map(|expr| expr.eval(&mut ctx));
+            // run_repl(&mut ctx);
         }
     }
 }

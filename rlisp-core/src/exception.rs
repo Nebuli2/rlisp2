@@ -26,7 +26,7 @@ impl fmt::Display for Exception {
                 expected, found
             ),
             Custom(_, err) => write!(f, "{}", err),
-            Undefined(symbol) => write!(f, "undefined symbol: {}", symbol),
+            Undefined(symbol) => write!(f, "undefined symbol: `{}`", symbol),
             Syntax(_, desc) => write!(f, "syntax error: {}", desc),
         }
     }

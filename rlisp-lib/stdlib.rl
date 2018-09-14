@@ -21,7 +21,7 @@
 
 ; map :: (a -> b) (list a) -> (list b)
 (define (map f xs)
-    (cond [(empty? xs) empty]
+    (cond [(empty? xs) nil]
           [else (cons (f (head xs)) (map f (tail xs)))]))
 
 ; sum :: (list num) -> num
@@ -34,7 +34,7 @@
 
 ; range :: num num -> (list num)
 (define (range from to)
-    (cond [{from = to} empty]
+    (cond [{from = to} nil]
           [else (cons from (range {from + 1} to))]))
 
 ; to :: num num -> (list num)
@@ -43,7 +43,7 @@
 
 ; singleton :: a -> (list a)
 (define (singleton x)
-    (cons x empty))
+    (cons x nil))
 
 ; append :: a (list a) -> (list a)
 (define (append x xs)
@@ -54,19 +54,11 @@
 ;     (cond [(empty? xs) xs]
 ;           [else (foldr f (f (head xs) acc) (tail xs))])))))
 
-; PROMPT :: string
-; Defines the prompt used by the REPL. If none is defined, it defaults to "> ".
-(define PROMPT "rlisp> ")
 
 ; (define-syntax reload
 ;     (syntax-rules []
 ;         (reload)
 ;         (import "stdlib.rlisp")))
-
-; prompt :: string -> string
-(define (prompt p)
-    (display p)
-    (readline))
 
 ; print :: a -> nil
 (define print display)
@@ -74,6 +66,15 @@
 ; println :: a -> nil
 (define (println s)
     (display s)
+    (newline))
+
+(define (string-append a b)
+    (format "#{a}#{b}"))
+
+(define ++ string-append)
+
+(define (println-debug ex)
+    (display-debug ex)
     (newline))
 
 ; factorial :: num -> num
@@ -91,7 +92,8 @@
 (define (is-even? n)
     {{n % 2} = 0})
 
-(define \ lambda)
-(define x (\()
-    (println "Hello world")
-    (println "Goodbye world")))
+(define {a /= b}
+    (not {a = b}))
+
+(define (greet name)
+    (println #"Bonjour, #{name}!"))

@@ -1,0 +1,1 @@
+(define-struct error [code description])

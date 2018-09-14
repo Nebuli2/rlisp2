@@ -11,8 +11,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::stdout;
 use std::io::BufReader;
-use util::wrap_begin;
-use util::Str;
+use termcolor::Color;
+use util::{print_pretty, wrap_begin, Style};
 
 fn unary_fn(args: &[Expression], f: impl Fn(f64) -> f64) -> Expression {
     match args {
@@ -60,6 +60,14 @@ pub fn _or(args: &[Expression], _: &mut Context) -> Expression {
     bools
         .map(|bs| Bool(bs.iter().any(|&b| b)))
         .unwrap_or_else(|ex| Exception(Signature("bool".into(), ex.type_of())))
+}
+
+pub fn _not(args: &[Expression], _: &mut Context) -> Expression {
+    match args {
+        [Bool(b)] => Bool(!b),
+        [x] => Exception(Signature("bool".into(), x.type_of())),
+        xs => Exception(Arity(1, xs.len())),
+    }
 }
 
 /// `+ :: num num -> num`
@@ -303,14 +311,14 @@ pub fn _gte(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// `begin :: any... a -> a`
-///
-/// Evaluates all passed expressions and produces the last.
-pub fn _begin(args: &[Expression], _: &mut Context) -> Expression {
-    args.last()
-        .map(|expr| expr.clone())
-        .unwrap_or_else(|| Quote(Box::new(Cons(ConsList::new()))))
-}
+// /// `begin :: any... a -> a`
+// ///
+// /// Evaluates all passed expressions and produces the last.
+// pub fn _begin(args: &[Expression], _: &mut Context) -> Expression {
+//     args.last()
+//         .map(|expr| expr.clone())
+//         .unwrap_or_else(|| Quote(Box::new(Cons(ConsList::new()))))
+// }
 
 /// `println :: a... -> nil`
 ///
@@ -323,6 +331,21 @@ pub fn _display(args: &[Expression], _: &mut Context) -> Expression {
             other => other.to_string(),
         };
         print!("{}", fmt);
+    }
+    stdout()
+        .flush()
+        .map_err(|_| Custom(12, "could not flush stdout".into()))
+        .map(|_| Expression::default())
+        .unwrap_or_else(|ex| Exception(ex))
+}
+
+pub fn _display_debug(args: &[Expression], _: &mut Context) -> Expression {
+    for arg in args {
+        let fmt = match arg {
+            Str(s) => s.to_string(),
+            other => other.to_string(),
+        };
+        print!("{:?}", fmt);
     }
     stdout()
         .flush()
@@ -569,8 +592,11 @@ fn format_str(sections: &[StrSection], env: &mut Context) -> Expression {
                             return res;
                         }
                         env.descend_scope();
-                        let res = format!("{}", res);
-                        buf.push_str(&res);
+                        let fmt = match res {
+                            Str(s) => s.to_string(),
+                            other => other.to_string(),
+                        };
+                        buf.push_str(&fmt);
                     }
                     None => {
                         return Exception(Syntax(
@@ -654,4 +680,41 @@ pub fn _atan(args: &[Expression], _: &mut Context) -> Expression {
 
 pub fn _atan2(args: &[Expression], _: &mut Context) -> Expression {
     binary_fn(args, f64::atan2)
+}
+
+pub fn _display_pretty(args: &[Expression], _: &mut Context) -> Expression {
+    fn get_style(style: impl AsRef<str>) -> Result<Style, Exception> {
+        match style.as_ref() {
+            "bold" => Ok(Style::Bold),
+            "normal" => Ok(Style::Normal),
+            other => Err(Custom(35, format!("style not found: {}", other).into())),
+        }
+    }
+
+    fn get_color(color: impl AsRef<str>) -> Result<Option<Color>, Exception> {
+        match color.as_ref() {
+            "red" => Ok(Some(Color::Red)),
+            "yellow" => Ok(Some(Color::Yellow)),
+            "green" => Ok(Some(Color::Green)),
+            "blue" => Ok(Some(Color::Blue)),
+            "none" => Ok(None),
+            other => Err(Custom(34, format!("color not found: {}", other).into())),
+        }
+    }
+
+    match args {
+        [Symbol(color), Symbol(style), Str(text)] => match (get_color(color), get_style(style)) {
+            (Ok(color), Ok(style)) => {
+                print_pretty(text, color, style);
+                Expression::default()
+            }
+            (Err(ex), _) => Exception(ex),
+            (_, Err(ex)) => Exception(ex),
+        },
+        [x, y, z] => Exception(Signature(
+            "(symbol, symbol, any)".into(),
+            format!("({}, {}, {})", x.type_of(), y.type_of(), z.type_of()).into(),
+        )),
+        xs => Exception(Arity(2, xs.len())),
+    }
 }
