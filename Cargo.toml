@@ -9,4 +9,4 @@ description = "A simple Lisp interpreter made in Rust, loosely based on Scheme"
 
 [dependencies]
 rlisp-core = { path = "./rlisp-core/" }
-clap = { version = "2.32.0", features = ["yaml"] }
+clap = "2.32.0"

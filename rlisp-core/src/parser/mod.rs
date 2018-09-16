@@ -62,7 +62,7 @@ where
     }
 
     fn peek_char(&mut self) -> Option<char> {
-        self.iter.peek().map(|&ch| ch)
+        self.iter.peek().cloned()
     }
 
     fn unread(&mut self, ch: char) {
@@ -126,7 +126,7 @@ where
                     match self.parse_expr() {
                         Some(expr) => {
                             if is_op {
-                                if let None = op {
+                                if op.is_none() {
                                     op = Some(expr);
                                 } else {
                                     // Ensure that different operators are not used in infix lists

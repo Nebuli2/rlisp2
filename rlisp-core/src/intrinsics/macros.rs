@@ -48,7 +48,7 @@ pub fn _lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         (Some(params), Some(body)) => match (*params).clone() {
             Cons(list) => create_lambda(list.clone(), body, ctx),
             _ => Exception(Syntax(17, "(lambda [args...] body)".into())),
-        },
+        }
         // create_lambda(params.clone(), body.clone()),
         _ => Exception(Syntax(17, "(lambda [args...] body)".into())),
     }
@@ -303,30 +303,8 @@ pub fn _let(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         })
         .map(|body| body.eval(ctx));
     ctx.descend_scope();
-    body.unwrap_or_else(|ex| Exception(ex))
+    body.unwrap_or_else(Exception)
 }
-
-// pub fn _eval(expr: &Expression, ctx: &mut Context) -> Expression {
-//     // (eval expr env)
-//     match expr {
-//         Cons(list) => {
-//             let expr = list.tail()
-//                 .and_then(|tail| tail.head())
-//                 .map(|expr| expr.eval(ctx)); // expr
-//             let env = list.tail()
-//                 .and_then(|tail| tail.tail())
-//                 .and_then(|tail| tail.head())
-//                 .map(|expr| expr.eval(ctx));
-//             match (expr, env) {
-//                 (Some(expr), Some(env)) => match env {
-
-//                 }
-//             }
-//         },
-//         _ => {}
-//     }
-//     Cons(ConsList::new())
-// }
 
 pub fn _try(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     // Check arity
@@ -522,7 +500,7 @@ pub fn _set(list: ConsList<Expression>, env: &mut Context) -> Expression {
 
 pub fn _begin(list: ConsList<Expression>, env: &mut Context) -> Expression {
     let mut last_expr = Expression::default();
-    for expr in list.tail().unwrap_or_else(|| ConsList::new()) {
+    for expr in list.tail().unwrap_or_else(ConsList::new) {
         let result = expr.eval(env);
         if result.is_exception() {
             return result;
