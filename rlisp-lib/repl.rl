@@ -3,7 +3,7 @@
 
 ; _ :: any
 ; Represents the last expression evaluated by the REPL.
-(define _ empty)
+(define _ nil)
 
 ; warn :: string -> nil
 ; Prints a warning containing the specified message in the following format:
@@ -41,9 +41,9 @@
     (try
         (begin
             (define value (eval (parse (readline))))
-            (if {value /= empty}
+            (if {value /= nil}
                 (println value)
-                empty)
+                nil)
             (set! '_ value))
         err)
     (repl))

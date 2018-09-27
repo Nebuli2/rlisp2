@@ -1,11 +1,11 @@
 ; (lazy a) = (-> a)
 
 ; lazy-fib :: (lazy num) -> (lazy num)
-(define (lazy-fib ln)
+(define (fib* n*)
     (lambda []
-        (define n (ln))
+        (define n (n*))
         (cond [{n < 2} n]
-              [else {((lazy-fib (lambda [] {n - 1}))) + ((lazy-fib (lambda [] {n - 2})))}])))
+              [else {((fib* (lambda [] {n - 1}))) + ((fib* (lambda [] {n - 2})))}])))
 
 (define ln (lambda [] 20))
 (define big-calc (lazy-fib ln))
