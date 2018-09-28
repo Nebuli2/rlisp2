@@ -13,14 +13,7 @@ pub struct StructData {
 }
 
 #[derive(Clone)]
-pub enum Expression {
-    Bool(bool),
-    Num(f64),
-    Str(Str),
-    Symbol(Str),
-
-    Cons(ConsList<Expression>),
-
+pub enum Callable {
     Lambda(ConsList<Str>, Rc<Expression>, Option<Capture>),
 
     // Represents an intrinsic function, taking a slice of expressions and
@@ -29,6 +22,21 @@ pub enum Expression {
 
     // Represents a macro that transforms the expression into a new expression.
     Macro(Rc<Fn(ConsList<Expression>, &mut Context) -> Expression>),
+}
+
+#[derive(Clone)]
+pub enum Expression {
+    Bool(bool),
+    Num(f64),
+    Str(Str),
+    Symbol(Str),
+
+    Cons(ConsList<Expression>),
+
+    DottedList(Rc<Expression>, Rc<Expression>),
+    Nil,
+
+    Callable(Callable),
 
     // Represents an exception
     Exception(exception::Exception),
@@ -38,6 +46,7 @@ pub enum Expression {
     Struct(Rc<StructData>),
 }
 
+use self::Callable::*;
 use self::Expression::*;
 use std::collections::HashMap;
 
@@ -50,9 +59,7 @@ impl Expression {
             Cons(..) => "cons".into(),
             Exception(..) => "error".into(),
             Symbol(..) => "symbol".into(),
-            Lambda(..) => "lambda".into(),
-            Intrinsic(..) => "lambda".into(),
-            Macro(..) => "lambda".into(),
+            Callable(..) => "procedure".into(),
             Struct(data) => data.name.clone(),
             _ => "unknown".into(),
         }
@@ -75,9 +82,7 @@ impl Expression {
 
     pub fn is_callable(&self) -> bool {
         match self {
-            Lambda(..) => true,
-            Intrinsic(..) => true,
-            Macro(..) => true,
+            Callable(..) => true,
             _ => false,
         }
     }
@@ -124,33 +129,33 @@ impl Expression {
                 if let Some(func) = list.head() {
                     let func = func.eval(ctx);
                     match func {
-                        Macro(f) => f(list.clone(), ctx),
-                        Intrinsic(f) => {
-                            let args: Result<Vec<_>, _> = list
-                                .tail()
-                                .unwrap_or_else(|| ConsList::new())
-                                .iter()
-                                .map(|expr| match expr.eval(ctx) {
-                                    Exception(e) => Err(e),
-                                    expr => Ok(expr),
-                                })
-                                .collect();
-                            args.map(|args| f(&args, ctx))
-                                .unwrap_or_else(|e| Exception(e))
-                        }
-                        Lambda(params, body, capture) => {
-                            let args: Result<ConsList<_>, _> = list
-                                .tail()
-                                .unwrap_or_default()
-                                .iter()
-                                .map(|expr| match expr.eval(ctx) {
-                                    e @ Exception(_) => Err(e),
-                                    expr => Ok(expr),
-                                })
-                                .collect();
-                            args.map(|args| eval_lambda(params, &body, args, ctx, capture))
-                                .unwrap_or_else(|e| e)
-                        }
+                        Callable(f) => match f {
+                            Macro(f) => f(list.clone(), ctx),
+                            Intrinsic(f) => {
+                                let args: Result<Vec<_>, _> = list
+                                    .tail()
+                                    .unwrap_or_else(|| ConsList::new())
+                                    .iter()
+                                    .map(|expr| match expr.eval(ctx) {
+                                        Exception(e) => Err(e),
+                                        expr => Ok(expr),
+                                    }).collect();
+                                args.map(|args| f(&args, ctx))
+                                    .unwrap_or_else(|e| Exception(e))
+                            }
+                            Lambda(params, body, capture) => {
+                                let args: Result<ConsList<_>, _> = list
+                                    .tail()
+                                    .unwrap_or_default()
+                                    .iter()
+                                    .map(|expr| match expr.eval(ctx) {
+                                        e @ Exception(_) => Err(e),
+                                        expr => Ok(expr),
+                                    }).collect();
+                                args.map(|args| eval_lambda(params, &body, args, ctx, capture))
+                                    .unwrap_or_else(|e| e)
+                            }
+                        },
                         Exception(ex) => Exception(ex.clone()),
                         other => Exception(Custom(
                             2,
@@ -199,7 +204,10 @@ fn eval_lambda(
             res
         }
         (expected, found) => {
-            println!("{:?}", Lambda(params.clone(), Rc::new(body.clone()), None));
+            println!(
+                "{:?}",
+                Callable(Lambda(params.clone(), Rc::new(body.clone()), None))
+            );
             Exception(Arity(expected, found))
         }
     }
@@ -218,14 +226,13 @@ impl fmt::Display for Expression {
                 let inner = strs.join(" ");
                 write!(f, "({})", inner)
             }
-            Lambda(params, body, ..) => {
-                let params_vec: Vec<_> =
-                    params.iter().map(|param| param.as_ref().clone()).collect();
-                let inner = params_vec.join(" ");
-                write!(f, "(lambda [{}] {})", inner, body)
-            }
-            Intrinsic(..) => write!(f, "<intrinsic>"),
-            Macro(..) => write!(f, "<macro>"),
+            Callable(..) => write!(f, "<procedure>"),
+            // Lambda(params, body, ..) => {
+            //     let params_vec: Vec<_> =
+            //         params.iter().map(|param| param.as_ref().clone()).collect();
+            //     let inner = params_vec.join(" ");
+            //     write!(f, "(lambda [{}] {})", inner, body)
+            // }
             Exception(ex) => write!(f, "error[{:03}]: {}", ex.error_code(), ex),
             Struct(data) => {
                 let StructData { name, data } = data.as_ref();
@@ -235,6 +242,8 @@ impl fmt::Display for Expression {
                 }
                 write!(f, ")")
             }
+            DottedList(a, b) => write!(f, "{} . {}", a, b),
+            Nil => write!(f, "()"),
         }
     }
 }
@@ -273,9 +282,12 @@ impl PartialEq for Expression {
             (Str(a), Str(b)) => a == b,
             (Bool(a), Bool(b)) => a == b,
             (Symbol(a), Symbol(b)) => a == b,
-            (Lambda(args_a, body_a, cap_a), Lambda(args_b, body_b, cap_b)) => {
-                args_a == args_b && body_a == body_b && cap_a == cap_b
-            }
+            (Callable(a), Callable(b)) => match (a, b) {
+                (Lambda(args_a, body_a, cap_a), Lambda(args_b, body_b, cap_b)) => {
+                    args_a == args_b && body_a == body_b && cap_a == cap_b
+                }
+                _ => false,
+            },
             (Quote(a), Quote(b)) => a == b,
             (Cons(a), Cons(b)) => a == b,
             (Struct(d1), Struct(d2)) => {

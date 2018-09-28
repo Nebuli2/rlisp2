@@ -1,5 +1,5 @@
 use context::Context;
-use expression::Expression;
+use expression::{Callable, Expression};
 use im::ConsList;
 use std::rc::Rc;
 
@@ -22,7 +22,10 @@ fn define_intrinsic(
     ident: impl ToString,
     f: impl Fn(&[Expression], &mut Context) -> Expression + 'static,
 ) {
-    ctx.insert(ident.to_string(), Expression::Intrinsic(Rc::new(f)));
+    ctx.insert(
+        ident.to_string(),
+        Expression::Callable(Callable::Intrinsic(Rc::new(f))),
+    );
 }
 
 fn define_macro(
@@ -30,7 +33,10 @@ fn define_macro(
     ident: impl ToString,
     f: impl Fn(ConsList<Expression>, &mut Context) -> Expression + 'static,
 ) {
-    ctx.insert(ident.to_string(), Expression::Macro(Rc::new(f)));
+    ctx.insert(
+        ident.to_string(),
+        Expression::Callable(Callable::Macro(Rc::new(f))),
+    );
 }
 
 fn load_macros(ctx: &mut Context) {

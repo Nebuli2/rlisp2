@@ -1,6 +1,7 @@
 use context::Context;
 use exception::Exception;
 use exception::Exception::*;
+use expression::Callable::*;
 use expression::Expression;
 use expression::Expression::*;
 use expression::StructData;
@@ -19,8 +20,7 @@ fn create_lambda(
         .map(|param| match *param {
             Symbol(ref name) => Ok(name.clone()),
             _ => Err(()),
-        })
-        .collect();
+        }).collect();
     params
         .map(|params| {
             let body = if body.len() == 1 {
@@ -34,9 +34,8 @@ fn create_lambda(
             } else {
                 Some(capture)
             };
-            Lambda(params, Rc::new(body.clone()), capture)
-        })
-        .unwrap_or_else(|_| Exception(Syntax(17, "(lambda [args...] body)".into())))
+            Callable(Lambda(params, Rc::new(body.clone()), capture))
+        }).unwrap_or_else(|_| Exception(Syntax(17, "(lambda [args...] body)".into())))
 }
 
 pub fn _lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
@@ -48,7 +47,7 @@ pub fn _lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         (Some(params), Some(body)) => match (*params).clone() {
             Cons(list) => create_lambda(list.clone(), body, ctx),
             _ => Exception(Syntax(17, "(lambda [args...] body)".into())),
-        }
+        },
         // create_lambda(params.clone(), body.clone()),
         _ => Exception(Syntax(17, "(lambda [args...] body)".into())),
     }
@@ -112,8 +111,7 @@ pub fn _define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                         } else {
                             Err(Signature("symbol".into(), ident.type_of()))
                         }
-                    })
-                    .and_then(|ident| match ident {
+                    }).and_then(|ident| match ident {
                         Symbol(ident) => {
                             // Continue
                             let params = func.tail().unwrap_or_default();
@@ -125,8 +123,7 @@ pub fn _define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                                         27,
                                         "function parameters must be symbols".into(),
                                     )),
-                                })
-                                .collect();
+                                }).collect();
                             params.map(|params| {
                                 let body = list.tail().and_then(|list| list.tail());
                                 body.map(|body| {
@@ -146,8 +143,7 @@ pub fn _define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                 26,
                 "define must bind either a function or a symbol".into(),
             )),
-        })
-        .unwrap_or_else(|ex| Exception(ex))
+        }).unwrap_or_else(|ex| Exception(ex))
 }
 
 pub fn _env(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
@@ -300,8 +296,7 @@ pub fn _let(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         .map(|body| match body.len() {
             1 => body.head().unwrap().as_ref().clone(),
             _ => wrap_begin(body),
-        })
-        .map(|body| body.eval(ctx));
+        }).map(|body| body.eval(ctx));
     ctx.descend_scope();
     body.unwrap_or_else(Exception)
 }
@@ -387,7 +382,7 @@ pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expressi
                     xs => Exception(Arity(1, xs.len())),
                 };
                 let accessor = format!("{}-{}", name, member);
-                env.insert(accessor, Intrinsic(Rc::new(get)));
+                env.insert(accessor, Callable(Intrinsic(Rc::new(get))));
             }
 
             // Create is-type function
@@ -403,7 +398,7 @@ pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expressi
                 _ => Bool(false),
             };
             let check_name = format!("is-{}?", name_str);
-            env.insert(check_name, Intrinsic(Rc::new(check)));
+            env.insert(check_name, Callable(Intrinsic(Rc::new(check))));
 
             // Create constructor
             let member_count = member_names.len();
@@ -446,7 +441,7 @@ pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expressi
                 }
             };
             let constructor = format!("make-{}", name_str);
-            env.insert(constructor, Macro(Rc::new(make)));
+            env.insert(constructor, Callable(Macro(Rc::new(make))));
             Expression::default()
         }
         n => Exception(Arity(2, n)),
