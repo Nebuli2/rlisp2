@@ -8,7 +8,7 @@ use expression::StructData;
 use expression::ValidIdentifier;
 use im::ConsList;
 use std::rc::Rc;
-use util::{wrap_begin, Str};
+use util::{nil, wrap_begin, Str};
 
 fn create_lambda(
     params: ConsList<Expression>,
@@ -50,19 +50,6 @@ pub fn _lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         },
         // create_lambda(params.clone(), body.clone()),
         _ => Exception(Syntax(17, "(lambda [args...] body)".into())),
-    }
-}
-
-pub fn _quote(list: ConsList<Expression>, _: &mut Context) -> Expression {
-    match list.len() - 1 {
-        n if n != 1 => Exception(Arity(1, n)),
-        _ => {
-            let expr = list.tail().and_then(|list| list.head());
-            match expr {
-                Some(expr) => Quote(Rc::new((*expr).clone())),
-                _ => Exception(Arity(1, 0)),
-            }
-        }
     }
 }
 
@@ -152,10 +139,7 @@ pub fn _env(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         .and_then(|tail| tail.head())
         .map(|arg| arg.eval(ctx));
     arg.map(|arg| match arg {
-        Symbol(ident) => ctx
-            .get(ident)
-            .map(|expr| expr.clone())
-            .unwrap_or_else(|| Quote(Rc::new(Cons(ConsList::new())))),
+        Symbol(ident) => ctx.get(ident).map(|expr| expr.clone()).unwrap_or_else(nil),
         _ => Exception(Signature("symbol".into(), arg.type_of())),
     }).unwrap_or_else(|| Exception(Arity(1, 99)))
 }
@@ -175,6 +159,7 @@ pub fn _if(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         .and_then(|tail| tail.tail())
         .and_then(|tail| tail.head());
     match (cond, then_branch, else_branch) {
+        (Some(ex @ Exception(_)), ..) => ex.clone(),
         (Some(Bool(cond)), Some(then_branch), Some(else_branch)) => {
             if cond {
                 then_branch.eval(ctx)
@@ -205,6 +190,7 @@ pub fn _cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
 
                 match (cond, value) {
                     (Some(cond), Some(value)) => match cond.eval(ctx) {
+                        ex @ Exception(_) => return ex.clone(),
                         Bool(false) => (),
                         Bool(true) => {
                             ctx.descend_scope();
@@ -373,7 +359,7 @@ pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expressi
             for (i, member) in member_names.iter().enumerate() {
                 let get = move |args: &[Expression], _: &mut Context| match args {
                     [Struct(data)] => {
-                        let StructData { name: _, data } = data.as_ref();
+                        let StructData { data, .. } = data.as_ref();
                         data.get(i).map(|expr| expr.clone()).unwrap_or_else(|| {
                             Exception(Custom(29, "struct does not contain specified field".into()))
                         })
@@ -382,7 +368,8 @@ pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expressi
                     xs => Exception(Arity(1, xs.len())),
                 };
                 let accessor = format!("{}-{}", name, member);
-                env.insert(accessor, Callable(Intrinsic(Rc::new(get))));
+                env.insert(accessor.clone(), Callable(Intrinsic(Rc::new(get))));
+                println!("{:?}", env.get(accessor));
             }
 
             // Create is-type function

@@ -47,7 +47,6 @@ fn load_macros(ctx: &mut Context) {
     define_macro(ctx, "env", _env);
     define_macro(ctx, "if", _if);
     define_macro(ctx, "cond", _cond);
-    define_macro(ctx, "quote", _quote);
     define_macro(ctx, "let", _let);
     define_macro(ctx, "try", _try);
     define_macro(ctx, "define-struct", _define_struct);
@@ -113,32 +112,33 @@ fn load_functions(ctx: &mut Context) {
         "||" => _or,
         "not" => _not,
 
-        "display-pretty" => _display_pretty,
         "set!" => _set,
+
+        // Lists
+        "cons" => _cons,
+        ":" => _cons,
+        "head" => _head,
+        "tail" => _tail,
+
+        "exit" => _exit,
+        "display" => _display,
+        "display-debug" => _display_debug,
+        "display-pretty" => _display_pretty,
+        "newline" => _newline,
+        "readline" => _readline,
+
+        "++" => _append,
+        "append" => _append,
+        "empty?" => _empty,
+        "eval" => _eval,
+        "import" => _import,
+        "readfile" => _readfile,
+        "parse" => _parse,
+        "type-of" => _type_of,
+        "format" => _format,
     }
 
     // Boolean logic
 
     // Lists
-    define_intrinsic(ctx, "cons", functions::_cons);
-    define_intrinsic(ctx, ":", functions::_cons);
-    define_intrinsic(ctx, "head", functions::_head);
-    define_intrinsic(ctx, "tail", functions::_tail);
-
-    define_intrinsic(ctx, "exit", functions::_exit);
-    define_intrinsic(ctx, "display", functions::_display);
-    define_intrinsic(ctx, "display-debug", functions::_display_debug);
-    define_intrinsic(ctx, "newline", functions::_newline);
-    define_intrinsic(ctx, "readline", functions::_readline);
-
-    define_intrinsic(ctx, "++", functions::_append);
-    define_intrinsic(ctx, "append", functions::_append);
-    define_intrinsic(ctx, "empty?", functions::_empty);
-
-    define_intrinsic(ctx, "eval", functions::_eval);
-    define_intrinsic(ctx, "import", functions::_import);
-    define_intrinsic(ctx, "parse", functions::_parse);
-
-    define_intrinsic(ctx, "type-of", functions::_type_of);
-    define_intrinsic(ctx, "format", functions::_format);
 }

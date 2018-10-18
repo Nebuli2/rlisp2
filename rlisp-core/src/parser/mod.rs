@@ -1,17 +1,17 @@
 use exception::Exception::*;
+use expression::Callable::*;
 use expression::Expression::{self, *};
 use im::ConsList;
-use std::iter::Peekable;
 use std::rc::Rc;
-use util::wrap_begin;
+use util::{nil, wrap_begin};
 
 pub mod preprocessor;
 
 pub struct Parser<I>
 where
-    I: Iterator<Item = char>,
+    I: IntoIterator<Item = char>,
 {
-    iter: Peekable<I>,
+    iter: I::IntoIter,
     stack: Vec<char>,
     name: Option<String>,
     row: usize,
@@ -20,11 +20,11 @@ where
 
 impl<I> Parser<I>
 where
-    I: Iterator<Item = char>,
+    I: IntoIterator<Item = char>,
 {
     pub fn new(iter: I) -> Self {
         Self {
-            iter: iter.peekable(),
+            iter: iter.into_iter(),
             stack: Vec::new(),
             name: None,
             row: 1,
@@ -33,13 +33,9 @@ where
     }
 
     pub fn with_name(iter: I, name: String) -> Self {
-        Self {
-            iter: iter.peekable(),
-            stack: Vec::new(),
-            name: Some(name),
-            row: 1,
-            col: 1,
-        }
+        let mut parser = Parser::new(iter);
+        parser.name = Some(name);
+        parser
     }
 
     fn next_char(&mut self) -> Option<char> {
@@ -59,10 +55,6 @@ where
         }
 
         ch
-    }
-
-    fn peek_char(&mut self) -> Option<char> {
-        self.iter.peek().cloned()
     }
 
     fn unread(&mut self, ch: char) {
@@ -87,7 +79,9 @@ where
 
         // Look at char
         self.next_char().and_then(|ch| match ch {
-            '\'' => self.parse_expr().map(|expr| Quote(Rc::new(expr))),
+            '\'' => self.parse_expr().map(quote),
+            '`' => self.parse_expr().map(quasiquote),
+            ',' => self.parse_expr().map(unquote),
             '(' => self.parse_cons(')'),
             '[' => self.parse_cons(']'),
             '#' => {
@@ -238,7 +232,10 @@ where
                 match s.as_str() {
                     "#t" | "true" => Bool(true),
                     "#f" | "false" => Bool(false),
-                    "nil" | "empty" => Quote(Rc::new(Cons(ConsList::new()))),
+                    "nil" | "empty" => nil(),
+                    "quote" => Callable(Quote),
+                    "quasiquote" => Callable(Quasiquote),
+                    "unquote" => Callable(Unquote),
                     _ => {
                         // Attempt to parse number
                         if let Ok(num) = s.parse::<f64>() {
@@ -286,6 +283,21 @@ fn is_valid_ident(ch: char) -> bool {
         '(' | ')' | '[' | ']' | '{' | '}' | '\'' | '"' | '`' | ',' => false,
         _ => true,
     }
+}
+
+fn quote(expr: Expression) -> Expression {
+    let list: ConsList<_> = [Callable(Quote), expr].into_iter().collect();
+    Cons(list)
+}
+
+fn quasiquote(expr: Expression) -> Expression {
+    let list: ConsList<_> = [Callable(Quasiquote), expr].into_iter().collect();
+    Cons(list)
+}
+
+fn unquote(expr: Expression) -> Expression {
+    let list: ConsList<_> = [Callable(Unquote), expr].into_iter().collect();
+    Cons(list)
 }
 
 #[cfg(test)]

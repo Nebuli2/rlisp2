@@ -41,11 +41,11 @@
     (try
         (begin
             (define value (eval (parse (readline))))
-            (if {value /= nil}
+            (if {value /= empty}
                 (println value)
                 nil)
             (set! '_ value))
-        err)
+        println)
     (repl))
 
 ; version :: -> string

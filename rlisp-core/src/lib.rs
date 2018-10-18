@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-extern crate im;
+pub extern crate im;
 extern crate termcolor;
 
 #[macro_use]
@@ -10,6 +10,8 @@ pub mod context;
 pub mod exception;
 pub mod expression;
 pub mod intrinsics;
+
+#[macro_use]
 pub mod parser;
 
 pub mod prelude {

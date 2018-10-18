@@ -14,6 +14,11 @@ pub struct StructData {
 
 #[derive(Clone)]
 pub enum Callable {
+    Quote,
+    Quasiquote,
+    Unquote,
+
+    // Lambda
     Lambda(ConsList<Str>, Rc<Expression>, Option<Capture>),
 
     // Represents an intrinsic function, taking a slice of expressions and
@@ -40,8 +45,6 @@ pub enum Expression {
 
     // Represents an exception
     Exception(exception::Exception),
-
-    Quote(Rc<Expression>),
 
     Struct(Rc<StructData>),
 }
@@ -113,11 +116,30 @@ impl Expression {
         capture
     }
 
+    fn eval_quasiquote(&self, ctx: &mut Context) -> Expression {
+        match self {
+            Cons(list) => {
+                // Handle unquote
+                if list.len() == 2 {
+                    if let Some(head) = list.head() {
+                        if let Callable(Unquote) = head.as_ref() {
+                            let expr = list.iter().nth(1).unwrap();
+                            return expr.eval(ctx);
+                        }
+                    }
+                }
+
+                let new_list: ConsList<_> =
+                    list.iter().map(|expr| expr.eval_quasiquote(ctx)).collect();
+                Cons(new_list)
+            }
+            other => other.clone(),
+        }
+    }
+
     /// Evaluates the specified expression within the specified context.
     pub fn eval(&self, ctx: &mut Context) -> Expression {
         match self {
-            Quote(expr) => (**expr).clone(),
-
             // Look up variable
             Symbol(ident) => ctx
                 .get(ident)
@@ -130,6 +152,27 @@ impl Expression {
                     let func = func.eval(ctx);
                     match func {
                         Callable(f) => match f {
+                            Quote => match list.len() - 1 {
+                                1 => {
+                                    // Safe to unwrap after checking length
+                                    let expr = list.iter().nth(1).unwrap();
+                                    expr.as_ref().clone()
+                                }
+                                len => Exception(Arity(1, len)),
+                            },
+                            Quasiquote => match list.len() - 1 {
+                                1 => {
+                                    // Safe to unwrap after checking length
+                                    let expr = list.iter().nth(1).unwrap();
+                                    expr.eval_quasiquote(ctx)
+                                }
+                                len => Exception(Arity(1, len)),
+                            },
+                            Unquote => Exception(Syntax(
+                                33,
+                                "unquote expression must be contained in a quasiquote".into(),
+                            )),
+
                             Macro(f) => f(list.clone(), ctx),
                             Intrinsic(f) => {
                                 let args: Result<Vec<_>, _> = list
@@ -216,17 +259,41 @@ fn eval_lambda(
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Quote(expr) => write!(f, "'{}", expr),
             Bool(b) => write!(f, "{}", b),
             Num(n) => write!(f, "{}", n),
             Str(s) => write!(f, "\"{}\"", s),
-            Symbol(s) => write!(f, "{}", s),
+            Symbol(s) => write!(f, "'{}", s),
             Cons(list) => {
+                // Check for quote, quasiquote, unquote special cases
+                if list.len() == 2 {
+                    let head = list.head().unwrap();
+                    let body = list.tail().and_then(|tail| tail.head()).unwrap();
+                    match head.as_ref() {
+                        Callable(Quote) => {
+                            return write!(f, "'{}", body);
+                        }
+                        Callable(Quasiquote) => {
+                            return write!(f, "`{}", body);
+                        }
+                        Callable(Unquote) => {
+                            return write!(f, ",{}", body);
+                        }
+                        _ => {
+                            // Otherwise we can ignore it
+                        }
+                    }
+                }
+
                 let strs: Vec<_> = list.iter().map(|expr| expr.to_string()).collect();
                 let inner = strs.join(" ");
                 write!(f, "({})", inner)
             }
-            Callable(..) => write!(f, "<procedure>"),
+            Callable(callable) => match callable {
+                Quote => write!(f, "quote"),
+                Quasiquote => write!(f, "quasiquote"),
+                Unquote => write!(f, "unquote"),
+                _ => write!(f, "<procedure>"),
+            },
             // Lambda(params, body, ..) => {
             //     let params_vec: Vec<_> =
             //         params.iter().map(|param| param.as_ref().clone()).collect();
@@ -251,7 +318,6 @@ impl fmt::Display for Expression {
 impl fmt::Debug for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Quote(expr) => write!(f, "<Quote:{:?}>", expr),
             Bool(b) => write!(f, "<Bool:{}>", b),
             Num(n) => write!(f, "<Num:{}>", n),
             Str(s) => write!(f, "<Str:\"{}\">", s),
@@ -288,7 +354,6 @@ impl PartialEq for Expression {
                 }
                 _ => false,
             },
-            (Quote(a), Quote(b)) => a == b,
             (Cons(a), Cons(b)) => a == b,
             (Struct(d1), Struct(d2)) => {
                 let StructData {

@@ -1,12 +1,13 @@
 #![allow(unknown_lints)]
 #![warn(clippy)]
 
-extern crate rlisp_core;
 extern crate clap;
 
+#[macro_use]
+extern crate rlisp_core;
 
-mod repl;
 mod app;
+mod repl;
 
 fn main() {
     app::run();

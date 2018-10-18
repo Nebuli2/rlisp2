@@ -1,5 +1,8 @@
 use exception::Exception;
-use expression::Expression;
+use expression::{
+    Callable::*,
+    Expression::{self, *},
+};
 use im::ConsList;
 use std::{io::prelude::*, rc::Rc};
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -15,11 +18,13 @@ macro_rules! cons {
 pub type Str = Rc<str>;
 
 pub fn nil() -> Expression {
-    Expression::Cons(ConsList::new())
+    let list =
+        ConsList::singleton(Callable(Quote)).append(ConsList::singleton(Cons(ConsList::new())));
+    Cons(list)
 }
 
 pub fn wrap_begin(exprs: ConsList<Expression>) -> Expression {
-    Expression::Cons(exprs.cons(Expression::Symbol("begin".into())))
+    Cons(exprs.cons(Expression::Symbol("begin".into())))
 }
 
 pub fn set_stdout_color(color: Option<Color>) {

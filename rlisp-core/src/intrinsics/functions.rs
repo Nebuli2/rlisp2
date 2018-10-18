@@ -8,6 +8,7 @@ use parser::preprocessor::*;
 use parser::Parser;
 use std::error::Error;
 use std::fs::File;
+use std::io;
 use std::io::prelude::*;
 use std::io::stdout;
 use std::io::BufReader;
@@ -42,8 +43,7 @@ pub fn _and(args: &[Expression], _: &mut Context) -> Expression {
         .map(|expr| match expr {
             Bool(b) => Ok(*b),
             other => Err(other),
-        })
-        .collect();
+        }).collect();
     bools
         .map(|bs| Bool(bs.iter().all(|&b| b)))
         .unwrap_or_else(|ex| Exception(Signature("bool".into(), ex.type_of())))
@@ -55,8 +55,7 @@ pub fn _or(args: &[Expression], _: &mut Context) -> Expression {
         .map(|expr| match expr {
             Bool(b) => Ok(*b),
             other => Err(other),
-        })
-        .collect();
+        }).collect();
     bools
         .map(|bs| Bool(bs.iter().any(|&b| b)))
         .unwrap_or_else(|ex| Exception(Signature("bool".into(), ex.type_of())))
@@ -79,8 +78,7 @@ pub fn _add(args: &[Expression], _: &mut Context) -> Expression {
         .map(|expr| match expr {
             Num(n) => Ok(*n),
             other => Err(other),
-        })
-        .collect();
+        }).collect();
 
     xs.map(|xs| xs.into_iter().fold(0.0, Add::add))
         .map(|x| Num(x))
@@ -108,8 +106,7 @@ pub fn _sub(args: &[Expression], _: &mut Context) -> Expression {
                     .map(|expr| match expr {
                         Num(n) => Some(*n),
                         _ => None,
-                    })
-                    .collect();
+                    }).collect();
 
                 let res = nums
                     .map(|nums| nums.into_iter().fold(*head, Sub::sub))
@@ -131,8 +128,7 @@ pub fn _mul(args: &[Expression], _: &mut Context) -> Expression {
         .map(|expr| match expr {
             Num(n) => Ok(*n),
             other => Err(other),
-        })
-        .collect();
+        }).collect();
 
     xs.map(|xs| xs.into_iter().fold(1.0, Mul::mul))
         .map(|x| Num(x))
@@ -160,8 +156,7 @@ pub fn _div(args: &[Expression], _: &mut Context) -> Expression {
                     .map(|expr| match expr {
                         Num(n) => Some(*n),
                         _ => None,
-                    })
-                    .collect();
+                    }).collect();
 
                 let res = nums
                     .map(|nums| nums.into_iter().fold(*head, Div::div))
@@ -370,8 +365,7 @@ pub fn _append(args: &[Expression], _: &mut Context) -> Expression {
         .map(|arg| match arg {
             Cons(list) => Some(list),
             _ => None,
-        })
-        .collect();
+        }).collect();
 
     if let Some(lists) = lists {
         let total = lists
@@ -385,8 +379,7 @@ pub fn _append(args: &[Expression], _: &mut Context) -> Expression {
         .map(|arg| match arg {
             Str(s) => Some(s),
             _ => None,
-        })
-        .collect();
+        }).collect();
 
     if let Some(strs) = strs {
         let len: usize = strs.iter().map(|s| s.len()).sum();
@@ -403,7 +396,7 @@ pub fn _append(args: &[Expression], _: &mut Context) -> Expression {
 pub fn _empty(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Cons(list)] => Bool(list.is_empty()),
-        [a] => Exception(Signature("[a]".into(), a.to_string().into())),
+        [a] => Exception(Signature("(list a)".into(), a.type_of().into())),
         xs => Exception(Arity(1, xs.len())),
     }
 }
@@ -411,6 +404,27 @@ pub fn _empty(args: &[Expression], _: &mut Context) -> Expression {
 pub fn _eval(args: &[Expression], ctx: &mut Context) -> Expression {
     match args {
         [ex] => ex.eval(ctx),
+        xs => Exception(Arity(1, xs.len())),
+    }
+}
+
+pub fn _readfile(args: &[Expression], _: &mut Context) -> Expression {
+    fn read_file(name: &str) -> Result<String, io::Error> {
+        let mut buf = String::new();
+
+        let file = File::open(name)?;
+        let mut reader = BufReader::new(file);
+
+        reader.read_to_string(&mut buf)?;
+
+        Ok(buf)
+    }
+
+    match args {
+        [Str(s)] => read_file(s.as_ref())
+            .map(|s| Str(s.into()))
+            .unwrap_or_else(|_| Exception(Custom(14, format!("could not read file {}", s).into()))),
+        [x] => Exception(Signature("str".into(), x.type_of())),
         xs => Exception(Arity(1, xs.len())),
     }
 }

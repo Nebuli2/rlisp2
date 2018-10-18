@@ -42,6 +42,8 @@ impl Context {
             .next()
     }
 
+    /// Attempts to retrieve a mutable reference to the value stored at the
+    /// specified key in the `Context`.
     pub fn get_mut(&mut self, key: impl AsRef<str>) -> Option<&mut Expression> {
         self.scopes
             .iter_mut()
@@ -58,6 +60,9 @@ impl Context {
             .map(|scope| scope.bindings.insert(ident, value));
     }
 
+    /// Defines a struct with the specified name in the `Context`. If the
+    /// scopes of the `Context` are empty, `None` is returned. Otherwise, a
+    /// `StructId` is returned.
     pub fn define_struct(&mut self, name: impl ToString) -> Option<StructId> {
         if let Some(scope) = self.scopes.last_mut() {
             self.struct_count += 1;
@@ -69,6 +74,8 @@ impl Context {
         }
     }
 
+    /// Looks up the `StructId` of the struct with the specified name in the
+    /// `Context`.
     pub fn get_struct_id(&self, name: impl AsRef<str>) -> Option<StructId> {
         self.scopes
             .iter()
