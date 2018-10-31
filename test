@@ -1,0 +1,23 @@
+(define (fibonacci n)
+    (match n
+        [0 0]
+        [1 1]
+        [n (+ (fibonacci (- n 1)) (fibonacci (- n 2)))]))
+
+(define Option
+    (Some [value])
+    None)
+
+(define Result
+    (Ok [value])
+    (Err [error]))
+
+(define List
+    (Cons [car cdr])
+    Nil)
+
+(define (map res f)
+    (match res
+        [(Ok x) (f x)]
+        [(Err e) e]
+        [other "pattern match failed"]))

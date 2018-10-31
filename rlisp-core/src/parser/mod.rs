@@ -1,43 +1,48 @@
-use exception::Exception::*;
-use expression::Callable::*;
-use expression::Expression::{self, *};
+//! This module provides a means of parsing text input into s-expressions. In
+//! addition, it provides additional syntax that is not typical of lisp
+//! dialects.
+//!
+//! As an example, infix function calls are allowed, provided they
+//! are delimited with `'{'` and `'}``. Within an infix function call, every
+//! other expression is considered to be the "function."
+
+use crate::{
+    exception::Exception::*,
+    expression::{
+        Callable::*,
+        Expression::{self, *},
+    },
+    util::{nil, wrap_begin},
+};
 use im::ConsList;
-use std::rc::Rc;
-use util::{nil, wrap_begin};
 
 pub mod preprocessor;
 
+/// Stores information regarding the current state of the parser, in particular
+/// its progress within whatever it is parsing, and a stack of characters to be
+/// re-read.
 pub struct Parser<I>
 where
     I: IntoIterator<Item = char>,
 {
     iter: I::IntoIter,
     stack: Vec<char>,
-    name: Option<String>,
-    row: usize,
-    col: usize,
 }
 
 impl<I> Parser<I>
 where
     I: IntoIterator<Item = char>,
 {
+    /// Produces a new parser reading from the specified iterator.
     pub fn new(iter: I) -> Self {
         Self {
             iter: iter.into_iter(),
             stack: Vec::new(),
-            name: None,
-            row: 1,
-            col: 1,
         }
     }
 
-    pub fn with_name(iter: I, name: String) -> Self {
-        let mut parser = Parser::new(iter);
-        parser.name = Some(name);
-        parser
-    }
-
+    /// Produces the next char in the parser, if it is present. Otherwise,
+    /// `None` is produced.
     fn next_char(&mut self) -> Option<char> {
         let ch = if !self.stack.is_empty() {
             self.stack.pop()
@@ -45,22 +50,17 @@ where
             self.iter.next()
         };
 
-        if let Some(ch) = ch {
-            if ch == '\n' {
-                self.row += 1;
-                self.col = 1;
-            } else {
-                self.col += 1;
-            }
-        }
-
         ch
     }
 
+    /// "Unreads" the specified character. Returning it to the stack of unread
+    /// characters.
     fn unread(&mut self, ch: char) {
         self.stack.push(ch)
     }
 
+    /// Parses all whitespace-separated expressions into a `begin` expression,
+    /// such that all will be evaulated, and the last returned.
     pub fn parse_all(&mut self) -> Expression {
         let mut exprs = ConsList::new();
         while let Some(expr) = self.parse_expr() {
@@ -73,6 +73,8 @@ where
         wrap_begin(exprs)
     }
 
+    /// Parses the next expression in the parser, producing it or `None` if no
+    /// expression is found.
     pub fn parse_expr(&mut self) -> Option<Expression> {
         // Ignore whitespace
         self.read_to(|ch| !ch.is_whitespace());
@@ -106,6 +108,15 @@ where
         })
     }
 
+    /// Parses an infix function list. Every other element of the list is
+    /// considered to be the first element of the list. As an example:
+    /// ```rustlisp
+    /// {1 + 2 + 3 + 4}
+    /// ```
+    /// Is parsed equivalently to:
+    /// ```rustlisp
+    /// (+ 1 2 3 4)
+    /// ```
     fn parse_infix(&mut self) -> Option<Expression> {
         let mut buf: Vec<Expression> = Vec::new();
         let mut is_op = false;
@@ -136,7 +147,12 @@ where
                             }
                             is_op = !is_op;
                         }
-                        None => return Some(Exception(Syntax(7, "unclosed infix list".into()))),
+                        None => {
+                            return Some(Exception(Syntax(
+                                7,
+                                "unclosed infix list".into(),
+                            )))
+                        }
                     }
                 }
             }
@@ -149,18 +165,11 @@ where
                 ConsList::from(buf).cons(op.expect("this should not fail")),
             )),
         }
-
-        // Some(
-        //     op.map(|op| Cons(ConsList::from(buf).cons(op)))
-        //         .unwrap_or_else(|| match buf.len() {
-        //             0 => Cons(ConsList::new()),
-        //             1 => (&buf[0]).clone(),
-        //             _ => Cons(ConsList::new()),
-        //         }),
-        // )
     }
 
-    pub fn read_to(&mut self, predicate: impl Fn(char) -> bool) -> Option<String> {
+    /// Reads from the data source until a specified predicate is matched. All
+    /// the data read is returned as a string.
+    fn read_to(&mut self, predicate: impl Fn(char) -> bool) -> Option<String> {
         let mut buf = String::new();
         while let Some(ch) = self.next_char() {
             if predicate(ch) {
@@ -177,7 +186,9 @@ where
         }
     }
 
-    pub fn parse_cons(&mut self, end: char) -> Option<Expression> {
+    /// Parses a list of expressions until a specified end delimiter, usually
+    /// `')'`, `']'`, or `'}'`, is reached.
+    fn parse_cons(&mut self, end: char) -> Option<Expression> {
         let mut list = ConsList::new();
         let mut closed = false;
         while let Some(ch) = self.next_char() {
@@ -191,9 +202,16 @@ where
                 ch => {
                     self.unread(ch);
                     match self.parse_expr() {
-                        Some(ref expr) if expr.is_exception() => return Some(expr.clone()),
+                        Some(ref expr) if expr.is_exception() => {
+                            return Some(expr.clone())
+                        }
                         Some(expr) => list = list + ConsList::singleton(expr),
-                        None => return Some(Exception(Syntax(6, "unclosed list".into()))),
+                        None => {
+                            return Some(Exception(Syntax(
+                                6,
+                                "unclosed list".into(),
+                            )))
+                        }
                     }
                 }
             }
@@ -205,7 +223,8 @@ where
         }
     }
 
-    pub fn parse_str(&mut self) -> Option<Expression> {
+    /// Parses a string.
+    fn parse_str(&mut self) -> Option<Expression> {
         let mut buf = String::new();
         while let Some(ch) = self.next_char() {
             match ch {
@@ -225,10 +244,11 @@ where
         Some(Exception(Syntax(8, "unclosed string literal".into())))
     }
 
-    pub fn parse_atom(&mut self) -> Option<Expression> {
+    /// Parses an atom, which is a boolean value, quote, quasiquote, unquote, a
+    /// number, or a symbol.
+    fn parse_atom(&mut self) -> Option<Expression> {
         self.read_to(|ch| ch.is_whitespace() || !is_valid_ident(ch))
             .map(|s| {
-                // println!("{}", s);
                 match s.as_str() {
                     "#t" | "true" => Bool(true),
                     "#f" | "false" => Bool(false),
@@ -249,34 +269,6 @@ where
     }
 }
 
-// fn is_valid_ident(ch: char) -> bool {
-//     match ch {
-//         | 'a'..='z'
-//         | 'A'..='Z'
-//         | '0'..='9'
-//         | '!'
-//         | '@'
-//         | '#'
-//         | '$'
-//         | '%'
-//         | '^'
-//         | '&'
-//         | '*'
-//         | '-'
-//         | '_'
-//         | '+'
-//         | '='
-//         | '/'
-//         | '?'
-//         | ':'
-//         | ';'
-//         | '>'
-//         | '<'
-//         | '.' => true,
-//         _ => false,
-//     }
-// }
-
 /// Determines whether or not the specified character is a valid identifier.
 fn is_valid_ident(ch: char) -> bool {
     match ch {
@@ -285,16 +277,40 @@ fn is_valid_ident(ch: char) -> bool {
     }
 }
 
+/// Wraps the specified expression in a quote. As an example:
+/// ```rustlisp
+/// 'foo
+/// ```
+/// Is transformed into:
+/// ```rustlisp
+/// (quote foo)
+/// ```
 fn quote(expr: Expression) -> Expression {
     let list: ConsList<_> = [Callable(Quote), expr].into_iter().collect();
     Cons(list)
 }
 
+/// Wraps the specified expression in a quasiquote. As an example:
+/// ```rustlisp
+/// `(1 2 ,(+ 1 2))
+/// ```
+/// Is transformed into:
+/// ```rustlisp
+/// (quasiquote (1 2 (unquote (+ 1 2)))
+/// ```
 fn quasiquote(expr: Expression) -> Expression {
     let list: ConsList<_> = [Callable(Quasiquote), expr].into_iter().collect();
     Cons(list)
 }
 
+/// Wraps the specified in an unquote. As en example:
+/// ```rustlisp
+/// ,foo
+/// ```
+/// Is transformed into:
+/// ```rustlisp
+/// (unquote foo)
+/// ```
 fn unquote(expr: Expression) -> Expression {
     let list: ConsList<_> = [Callable(Unquote), expr].into_iter().collect();
     Cons(list)

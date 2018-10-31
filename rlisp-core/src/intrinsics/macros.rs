@@ -1,14 +1,19 @@
-use context::Context;
-use exception::Exception;
-use exception::Exception::*;
-use expression::Callable::*;
-use expression::Expression;
-use expression::Expression::*;
-use expression::StructData;
-use expression::ValidIdentifier;
+//! This module provides intrinsic macros to the rlisp language. An intrinsic
+//! macro is a function that acts on unevaluated arguments. This gives the
+//! macro reign to do whatever it will with the arguments.
+
+use crate::{
+    context::Context,
+    exception::Exception::*,
+    expression::{
+        Callable::*,
+        Expression::{self, *},
+        StructData, ValidIdentifier,
+    },
+    util::{nil, wrap_begin, Str},
+};
 use im::ConsList;
 use std::rc::Rc;
-use util::{nil, wrap_begin, Str};
 
 fn create_lambda(
     params: ConsList<Expression>,
@@ -35,14 +40,19 @@ fn create_lambda(
                 Some(capture)
             };
             Callable(Lambda(params, Rc::new(body.clone()), capture))
-        }).unwrap_or_else(|_| Exception(Syntax(17, "(lambda [args...] body)".into())))
+        }).unwrap_or_else(|_| {
+            Exception(Syntax(17, "(lambda [args...] body)".into()))
+        })
 }
 
-pub fn _lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
+/// ```rustlisp
+/// (lambda [<param1> ...] <body1> ...)
+/// ```
+/// Produces a `Lambda` with the specified parameters and body.
+pub fn lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let params = list.tail().and_then(|list| list.head());
     let body = list.tail().and_then(|list| list.tail());
-    // let vec: Vec<_> = list.iter().map(|expr| (*expr).clone()).collect();
-    // let _lambda = Symbol(LAMBDA.into());
+
     match (params, body) {
         (Some(params), Some(body)) => match (*params).clone() {
             Cons(list) => create_lambda(list.clone(), body, ctx),
@@ -53,7 +63,12 @@ pub fn _lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     }
 }
 
-pub fn _define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
+/// ```rustlisp
+/// (define <ident> <value>)
+/// (define (<ident> <param1> ...) <expr1> ...)
+/// ```
+/// Defines either a constant or a function with the specified name and value.
+pub fn define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     list.tail()
         .and_then(|list| list.head())
         .map(|head| (*head).clone())
@@ -66,7 +81,11 @@ pub fn _define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                     len if len == 3 => {
                         if ident.is_valid_identifier() {
                             // Safe to unwrap because we just checked the length
-                            let value = list.iter().nth(2).map(|expr| expr.eval(ctx)).unwrap();
+                            let value = list
+                                .iter()
+                                .nth(2)
+                                .map(|expr| expr.eval(ctx))
+                                .unwrap();
                             if let Exception(ex) = value {
                                 Err(ex)
                             } else {
@@ -74,7 +93,11 @@ pub fn _define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                                 Ok(Expression::default())
                             }
                         } else {
-                            Err(Custom(28, format!("reserved identifier: {}", ident).into()))
+                            Err(Custom(
+                                28,
+                                format!("reserved identifier: {}", ident)
+                                    .into(),
+                            ))
                         }
                     }
                     len => {
@@ -93,7 +116,11 @@ pub fn _define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                             if s.is_valid_identifier() {
                                 Ok(ident.clone())
                             } else {
-                                Err(Custom(28, format!("reserved identifier: {}", s).into()))
+                                Err(Custom(
+                                    28,
+                                    format!("reserved identifier: {}", s)
+                                        .into(),
+                                ))
                             }
                         } else {
                             Err(Signature("symbol".into(), ident.type_of()))
@@ -102,19 +129,25 @@ pub fn _define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                         Symbol(ident) => {
                             // Continue
                             let params = func.tail().unwrap_or_default();
-                            let params: Result<ConsList<_>, _> = params
+                            let params: Result<
+                                ConsList<_>,
+                                _,
+                            > = params
                                 .iter()
                                 .map(|param| match param.as_ref() {
                                     ident @ Symbol(..) => Ok(ident.clone()),
                                     _ => Err(Syntax(
                                         27,
-                                        "function parameters must be symbols".into(),
+                                        "function parameters must be symbols"
+                                            .into(),
                                     )),
                                 }).collect();
                             params.map(|params| {
-                                let body = list.tail().and_then(|list| list.tail());
+                                let body =
+                                    list.tail().and_then(|list| list.tail());
                                 body.map(|body| {
-                                    let lambda = create_lambda(params, body, ctx);
+                                    let lambda =
+                                        create_lambda(params, body, ctx);
                                     ctx.insert(ident, lambda);
                                 });
                                 Expression::default()
@@ -122,7 +155,10 @@ pub fn _define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                         }
                         _ => {
                             // Error, must have symbol as function identifier
-                            Err(Syntax(25, "value must be bound to a symbol".into()))
+                            Err(Syntax(
+                                25,
+                                "value must be bound to a symbol".into(),
+                            ))
                         }
                     })
             }
@@ -133,18 +169,29 @@ pub fn _define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         }).unwrap_or_else(|ex| Exception(ex))
 }
 
-pub fn _env(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
+/// ```rustlisp
+/// (env <ident>)
+/// ```
+/// Looks up the specified identifier in the current evaluation context.
+pub fn env(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let arg = list
         .tail()
         .and_then(|tail| tail.head())
         .map(|arg| arg.eval(ctx));
     arg.map(|arg| match arg {
-        Symbol(ident) => ctx.get(ident).map(|expr| expr.clone()).unwrap_or_else(nil),
+        Symbol(ident) => {
+            ctx.get(ident).map(|expr| expr.clone()).unwrap_or_else(nil)
+        }
         _ => Exception(Signature("symbol".into(), arg.type_of())),
     }).unwrap_or_else(|| Exception(Arity(1, 99)))
 }
 
-pub fn _if(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
+/// ```rustlisp
+/// (if <cond> <then> <else>)
+/// ```
+/// If the condition is true, <then> is returned. Otherwise, <else> is
+/// returned.
+pub fn if_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let cond = list
         .tail()
         .and_then(|tail| tail.head())
@@ -175,7 +222,12 @@ pub fn _if(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     }
 }
 
-pub fn _cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
+/// ```rustlisp
+/// (cond [<pred> <expr>] ...)
+/// ```
+/// Iterates through the predicates until one evaluaes to true. That
+/// predicate's matching value is returned.
+pub fn cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     ctx.ascend_scope();
 
     // Ensure that "else" branch works
@@ -215,7 +267,10 @@ pub fn _cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
             }
             _ => {
                 ctx.descend_scope();
-                return Exception(Syntax(20, "condition case must be a list".into()));
+                return Exception(Syntax(
+                    20,
+                    "condition case must be a list".into(),
+                ));
             }
         }
     }
@@ -224,7 +279,12 @@ pub fn _cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     Expression::default()
 }
 
-pub fn _let(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
+/// ```rustlisp
+/// (let ([<name> <value>] ...) <expr> ...)
+/// ```
+/// Binds the specified values to the specified identifiers, creating a new
+/// context, and evaluating the specified body expressions in that new context.
+pub fn let_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let bindings = list.tail().and_then(|tail| tail.head());
     let body = list.tail().and_then(|list| list.tail());
 
@@ -234,8 +294,7 @@ pub fn _let(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         .and_then(|bindings| match bindings.as_ref().clone() {
             Cons(bindings_list) => Ok(bindings_list),
             _ => Err(Syntax(21, "binding list must be a list of bindings".into())), // Better error handling than none
-        })
-        .and_then(|bindings| {
+        }).and_then(|bindings| {
             for binding in bindings.iter() {
                 match binding.as_ref() {
                     Cons(binding) if binding.len() == 2 => {
@@ -287,7 +346,12 @@ pub fn _let(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     body.unwrap_or_else(Exception)
 }
 
-pub fn _try(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
+/// ```rustlisp
+/// (try <expr> <handler>)
+/// ```
+/// Attempts to evaluate the specified expression. If an exception is thrown,
+/// the specified handler is called with data on the exception as its argument.
+pub fn try_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     // Check arity
     match list.len() - 1 {
         2 => {
@@ -299,7 +363,10 @@ pub fn _try(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                 if let Exception(ex) = expr {
                     let expr = Struct(Rc::new(StructData {
                         name: "error".into(),
-                        data: vec![(ex.error_code() as f64).into(), ex.to_string().into()],
+                        data: vec![
+                            (ex.error_code() as f64).into(),
+                            ex.to_string().into(),
+                        ],
                     }));
                     let handle_list = cons![handler, expr];
                     Cons(handle_list).eval(ctx)
@@ -307,10 +374,9 @@ pub fn _try(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                     expr
                 }
             } else {
-                println!("handler: {:?}", handler);
                 Exception(Custom(
                     2,
-                    format!("{} is not a callable value", handler).into(),
+                    format!("not a callable value: `{}`", handler).into(),
                 ))
             }
         }
@@ -318,7 +384,28 @@ pub fn _try(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     }
 }
 
-pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expression {
+/// ```rustlisp
+/// (define-struct <name> [<field1> ...])
+/// ```
+/// Creates a custom struct type, providing a name and field names. A number of
+/// functions are in turn created:
+/// * `make-<name> :: a ... -> <name>`
+/// The constructor for types of this struct.
+/// * `is-<name>? :: a -> bool`
+/// Determines whether or not a value is of the type of this struct.
+/// * `<name>-<field> :: <name> -> a`
+/// A "getter" for the specified field in the struct.
+///
+/// As an example, calling `(define-struct point [x y])` would create the
+/// following functions:
+/// * `make-point`
+/// * `is-point?`
+/// * `point-x`
+/// * `point-y`
+pub fn define_struct(
+    list: ConsList<Expression>,
+    env: &mut Context,
+) -> Expression {
     match list.len() - 1 {
         2 => {
             // These are safe to unwrap as we just checked the length
@@ -347,33 +434,46 @@ pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expressi
                 return Exception(Signature("cons".into(), name.type_of()));
             }
 
-            let mut member_names: Vec<Str> = Vec::with_capacity(members_symbols.len());
+            let mut member_names: Vec<Str> =
+                Vec::with_capacity(members_symbols.len());
             for ex in members_symbols.iter() {
                 match ex.as_ref() {
                     Symbol(member) => member_names.push(member.clone()),
-                    other => return Exception(Signature("symbol".into(), other.type_of())),
+                    other => {
+                        return Exception(Signature(
+                            "symbol".into(),
+                            other.type_of(),
+                        ))
+                    }
                 }
             }
 
             // Create accessors
             for (i, member) in member_names.iter().enumerate() {
-                let get = move |args: &[Expression], _: &mut Context| match args {
+                let get = move |args: &[Expression], _: &mut Context| match args
+                {
                     [Struct(data)] => {
                         let StructData { data, .. } = data.as_ref();
-                        data.get(i).map(|expr| expr.clone()).unwrap_or_else(|| {
-                            Exception(Custom(29, "struct does not contain specified field".into()))
-                        })
+                        data.get(i).map(|expr| expr.clone()).unwrap_or_else(
+                            || {
+                                Exception(Custom(
+                                    29,
+                                    "struct does not contain specified field"
+                                        .into(),
+                                ))
+                            },
+                        )
                     }
                     // [x] => Exception(Signature(name_symbol.clone(), x.type_of())),
                     xs => Exception(Arity(1, xs.len())),
                 };
                 let accessor = format!("{}-{}", name, member);
                 env.insert(accessor.clone(), Callable(Intrinsic(Rc::new(get))));
-                println!("{:?}", env.get(accessor));
             }
 
             // Create is-type function
-            let check = move |args: &[Expression], env: &mut Context| match args {
+            let check = move |args: &[Expression], env: &mut Context| match args
+            {
                 [Struct(data)] => {
                     let StructData { name, data: _ } = data.as_ref();
                     if let Some(struct_id) = env.get_struct_id(name) {
@@ -389,7 +489,9 @@ pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expressi
 
             // Create constructor
             let member_count = member_names.len();
-            let make = move |args: ConsList<Expression>, env: &mut Context| -> Expression {
+            let make = move |args: ConsList<Expression>,
+                             env: &mut Context|
+                  -> Expression {
                 let arg_count = args.len() - 1;
                 let arg_iter = args.iter().skip(1);
                 let mut member_data = Vec::with_capacity(arg_count);
@@ -435,52 +537,45 @@ pub fn _define_struct(list: ConsList<Expression>, env: &mut Context) -> Expressi
     }
 }
 
-// pub fn _set(args: &[Expression], env: &mut Context) -> Expression {
-//     match args {
-//         [Symbol(s), ex] => {
-//             if let Some(mut reference) = env.get_mut(s) {
-//                 *reference = ex.clone();
-//                 Expression::default()
-//             } else {
-//                 Exception(Undefined(s.clone()))
+// pub fn _set(list: ConsList<Expression>, env: &mut Context) -> Expression {
+//     fn set_helper(
+//         list: ConsList<Expression>,
+//         env: &mut Context,
+//     ) -> Result<Expression, Exception> {
+//         match list.len() - 1 {
+//             2 => {
+//                 let ident = list.iter().nth(1).ok_or_else(|| Arity(2, 0))?;
+//                 let ident_str = match ident.as_ref() {
+//                     Symbol(s) => Ok(s),
+//                     other => Err(Signature("symbol".into(), other.type_of())),
+//                 }?;
+//                 let expr = list.iter().nth(2).ok_or_else(|| Arity(2, 1))?;
+//                 let res = expr.eval(env);
+
+//                 if let Exception(ex) = res {
+//                     return Err(ex);
+//                 }
+
+//                 let mut ident_ref = env
+//                     .get_mut(ident_str)
+//                     .ok_or_else(|| Undefined(ident_str.clone()))?;
+//                 *ident_ref = res;
+
+//                 Ok(Expression::default())
 //             }
+//             n => Err(Arity(2, n)),
 //         }
-//         [x, _] => Exception(Signature("symbol".into(), x.type_of())),
-//         xs => Exception(Arity(2, xs.len())),
 //     }
+
+//     set_helper(list, env).unwrap_or_else(|ex| Exception(ex))
 // }
 
-pub fn _set(list: ConsList<Expression>, env: &mut Context) -> Expression {
-    fn set_helper(list: ConsList<Expression>, env: &mut Context) -> Result<Expression, Exception> {
-        match list.len() - 1 {
-            2 => {
-                let ident = list.iter().nth(1).ok_or_else(|| Arity(2, 0))?;
-                let ident_str = match ident.as_ref() {
-                    Symbol(s) => Ok(s),
-                    other => Err(Signature("symbol".into(), other.type_of())),
-                }?;
-                let expr = list.iter().nth(2).ok_or_else(|| Arity(2, 1))?;
-                let res = expr.eval(env);
-
-                if let Exception(ex) = res {
-                    return Err(ex);
-                }
-
-                let mut ident_ref = env
-                    .get_mut(ident_str)
-                    .ok_or_else(|| Undefined(ident_str.clone()))?;
-                *ident_ref = res;
-
-                Ok(Expression::default())
-            }
-            n => Err(Arity(2, n)),
-        }
-    }
-
-    set_helper(list, env).unwrap_or_else(|ex| Exception(ex))
-}
-
-pub fn _begin(list: ConsList<Expression>, env: &mut Context) -> Expression {
+/// ```rustlisp
+/// (begin <expr> ...)
+/// ```
+/// Evalulates all provided expressions. The result of the last expression is
+/// returned.
+pub fn begin(list: ConsList<Expression>, env: &mut Context) -> Expression {
     let mut last_expr = Expression::default();
     for expr in list.tail().unwrap_or_else(ConsList::new) {
         let result = expr.eval(env);

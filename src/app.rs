@@ -1,7 +1,8 @@
 use clap::{App, Arg, ArgMatches};
 use repl::run_repl;
 use rlisp_core::{
-    expression::Expression::*, intrinsics::functions::_import, prelude::*, util::print_err,
+    expression::Expression::*, intrinsics::functions::import, prelude::*,
+    util::print_err,
 };
 
 fn create_app<'a>() -> ArgMatches<'a> {
@@ -36,7 +37,7 @@ pub fn run() {
         .unwrap_or_else(|| "rlisp-lib/loader.rl");
 
     let mut ctx = init_context();
-    let res = _import(&[Str(lib_loc.into())], &mut ctx);
+    let res = import(&[Str(lib_loc.into())], &mut ctx);
 
     if let Exception(ex) = res {
         print_err(&ex);
@@ -46,7 +47,7 @@ pub fn run() {
     match matches.value_of("INPUT") {
         Some(input) => {
             // Load input file
-            let res = _import(&[Str(input.into())], &mut ctx);
+            let res = import(&[Str(input.into())], &mut ctx);
             if let Exception(ex) = res {
                 print_err(&ex);
                 return;

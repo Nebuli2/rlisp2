@@ -1,3 +1,5 @@
+//! This module provides access to intrinsic functions of the interpreter.
+
 use context::Context;
 use expression::{Callable, Expression};
 use im::ConsList;
@@ -6,14 +8,11 @@ use std::rc::Rc;
 pub mod functions;
 pub mod macros;
 
-pub fn load_intrinsics(ctx: &mut Context) {
-    load_macros(ctx);
-    load_functions(ctx);
-}
-
+/// Creates a context and loads all intrinsic functions and macros into it.
 pub fn init_context() -> Context {
     let mut ctx = Context::new();
-    load_intrinsics(&mut ctx);
+    load_functions(&mut ctx);
+    load_macros(&mut ctx);
     ctx
 }
 
@@ -39,19 +38,40 @@ fn define_macro(
     );
 }
 
+macro_rules! define_macros {
+    {
+        context: $ctx:expr,
+        $($name:expr => $func:expr),*,
+    } => ({
+        $(
+            define_macro($ctx, $name, $func);
+        )*
+    });
+    {
+        context: $ctx:expr,
+        $($name:expr => $func:expr),*
+    } => ({
+        $(
+            define_macro($ctx, $name, $func);
+        )*
+    });
+}
+
 fn load_macros(ctx: &mut Context) {
     use self::macros::*;
-    define_macro(ctx, "define", _define);
-    define_macro(ctx, "lambda", _lambda);
-    define_macro(ctx, "λ", _lambda);
-    define_macro(ctx, "env", _env);
-    define_macro(ctx, "if", _if);
-    define_macro(ctx, "cond", _cond);
-    define_macro(ctx, "let", _let);
-    define_macro(ctx, "try", _try);
-    define_macro(ctx, "define-struct", _define_struct);
-    // define_macro(ctx, "set!", _set);
-    define_macro(ctx, "begin", _begin);
+    define_macros! {
+        context: ctx,
+        "define" => define,
+        "lambda" => lambda,
+        "λ" => lambda,
+        "env" => env,
+        "if" => if_expr,
+        "cond" => cond,
+        "let" => let_expr,
+        "try" => try_expr,
+        "define-struct" => define_struct,
+        "begin" => begin,
+    }
 }
 
 macro_rules! define_intrinsics {
@@ -76,66 +96,66 @@ macro_rules! define_intrinsics {
 fn load_functions(ctx: &mut Context) {
     use self::functions::*;
 
-    // Mathematical operators
-    define_intrinsic(ctx, "+", functions::_add);
-    define_intrinsic(ctx, "-", functions::_sub);
-    define_intrinsic(ctx, "*", functions::_mul);
-    define_intrinsic(ctx, "/", functions::_div);
-    define_intrinsic(ctx, "%", functions::_rem);
-    define_intrinsic(ctx, "eq?", functions::_eq);
-    define_intrinsic(ctx, "=", functions::_eq);
-    define_intrinsic(ctx, ">", functions::_gt);
-    define_intrinsic(ctx, ">=", functions::_gte);
-    define_intrinsic(ctx, "<", functions::_lt);
-    define_intrinsic(ctx, "<=", functions::_lte);
-
-    // Mathematical functions
     define_intrinsics! {
         context: ctx,
 
+        // Operators
+        "+" => add,
+        "-" => sub,
+        "*" => mul,
+        "/" => div,
+        "%" => rem,
+        "rem" => rem,
+        "eq?" => eq,
+        "=" => eq,
+        ">" => gt,
+        ">=" => gte,
+        "<" => lt,
+        "<=" => lte,
+
         // Mathematical functions
-        "sin" => _sin,
-        "cos" => _cos,
-        "tan" => _tan,
-        "csc" => _csc,
-        "sec" => _sec,
-        "cot" => _cot,
-        "asin" => _asin,
-        "acos" => _acos,
-        "atan" => _atan,
-        "sqrt" => _sqrt,
+        "sin" => sin,
+        "cos" => cos,
+        "tan" => tan,
+        "csc" => csc,
+        "sec" => sec,
+        "cot" => cot,
+        "asin" => asin,
+        "acos" => acos,
+        "atan" => atan,
+        "sqrt" => sqrt,
 
         // Boolean logic
-        "and" => _and,
-        "&&" => _and,
-        "or" => _or,
-        "||" => _or,
-        "not" => _not,
+        "and" => and,
+        "&&" => and,
+        "or" => or,
+        "||" => or,
+        "not" => not,
 
-        "set!" => _set,
+        "set!" => set,
 
         // Lists
-        "cons" => _cons,
-        ":" => _cons,
-        "head" => _head,
-        "tail" => _tail,
+        "cons" => cons,
+        ":" => cons,
+        "head" => head,
+        "tail" => tail,
 
-        "exit" => _exit,
-        "display" => _display,
-        "display-debug" => _display_debug,
-        "display-pretty" => _display_pretty,
-        "newline" => _newline,
-        "readline" => _readline,
+        "exit" => exit,
+        "display" => display,
+        "display-debug" => display_debug,
+        "display-pretty" => display_pretty,
+        "newline" => newline,
+        "readline" => readline,
 
-        "++" => _append,
-        "append" => _append,
-        "empty?" => _empty,
-        "eval" => _eval,
-        "import" => _import,
-        "readfile" => _readfile,
-        "parse" => _parse,
-        "type-of" => _type_of,
-        "format" => _format,
+        "++" => append,
+        "append" => append,
+        "empty?" => empty,
+        "eval" => eval,
+        "import" => import,
+        "readfile" => readfile,
+        "parse" => parse,
+        "type-of" => type_of,
+        "format" => format,
     }
 
     // Boolean logic

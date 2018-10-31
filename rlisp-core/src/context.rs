@@ -1,9 +1,13 @@
+//! This module provides the `Context` struct for storing data during the
+//! evaluation of expressions.
+
 use expression::Expression;
 use std::collections::HashMap;
 
-// type Scope = HashMap<String, Expression>;
+/// Represents the ID of an rlisp struct type.
 type StructId = usize;
 
+/// Represents an individual scope in the evaluation context.
 struct Scope {
     bindings: HashMap<String, Expression>,
     structs: HashMap<String, StructId>,
@@ -18,9 +22,18 @@ impl Default for Scope {
     }
 }
 
+/// Represents the evaluation context for use during the evaluation of rlisp
+/// expressions. It provides a means of accessing stored variables and
+/// information about custom struct types.
 pub struct Context {
     scopes: Vec<Scope>,
     struct_count: usize,
+}
+
+impl Default for Context {
+    fn default() -> Context {
+        Context::new()
+    }
 }
 
 impl Context {

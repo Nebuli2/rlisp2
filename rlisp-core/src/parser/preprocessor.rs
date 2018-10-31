@@ -1,3 +1,20 @@
+//! This module provides functions for preprocessing a given file. This allows
+//! for files to be written in an alternative syntax. Some examples are given
+//! below:
+//!
+//! A file with the specified contents:
+//! ```rustlisp
+//! define : square x
+//!   * x x
+//! ```
+//! Is transformed into the following file:
+//! ```rustlisp
+//! (define (square x)
+//!   (* x x))
+//! ```
+
+/// Runs the first pass of the preprocessor on the specified string. The first
+/// pass strips comments and adds parentheses as needed based on colons.
 pub fn first_pass(s: String) -> String {
     let mut buf = String::with_capacity(s.len());
     let mut iter = s.chars();
@@ -33,7 +50,9 @@ pub fn first_pass(s: String) -> String {
     buf
 }
 
-pub fn process(s: String) -> String {
+/// Runs the second pass of the preprocessor over the specified string.
+/// Parentheses are inserted based on indentation.
+pub fn second_pass(s: String) -> String {
     let mut buf = String::with_capacity(s.len());
     let indentations = s.lines().map(|line| {
         let mut indents = 0;

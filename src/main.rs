@@ -2,8 +2,6 @@
 #![warn(clippy)]
 
 extern crate clap;
-
-#[macro_use]
 extern crate rlisp_core;
 
 mod app;

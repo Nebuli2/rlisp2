@@ -1,4 +1,7 @@
+//! Foo
+
 #![forbid(unsafe_code)]
+#![deny(missing_docs)]
 
 pub extern crate im;
 extern crate termcolor;
@@ -14,9 +17,11 @@ pub mod intrinsics;
 #[macro_use]
 pub mod parser;
 
+/// The prelude module re-exports commonly used portions of the `rlisp_core`
+/// crate for easier access.
 pub mod prelude {
     pub use {
-        context::Context, exception::Exception, expression::Expression, intrinsics::init_context,
-        parser::Parser, util::nil,
+        context::Context, exception::Exception, expression::Expression,
+        intrinsics::init_context, parser::Parser, util::nil,
     };
 }
