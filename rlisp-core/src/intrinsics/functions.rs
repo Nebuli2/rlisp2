@@ -41,9 +41,8 @@ fn binary_fn(args: &[Expression], f: impl Fn(f64, f64) -> f64) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// and :: bool ... -> bool
-/// ```
+/// `and :: bool ... -> bool`
+///
 /// Produces `true` if and only if all values are `true`. Otherwise, `false` is
 /// returned.
 pub fn and(args: &[Expression], _: &mut Context) -> Expression {
@@ -58,9 +57,8 @@ pub fn and(args: &[Expression], _: &mut Context) -> Expression {
         .unwrap_or_else(|ex| Exception(Signature("bool".into(), ex.type_of())))
 }
 
-/// ```rustlisp
-/// or :: bool ... -> bool
-/// ```
+/// `or :: bool ... -> bool`
+///
 /// Produces `true` if and only if at least one value is `true`. Otherwise,
 /// `false` is returned.
 pub fn or(args: &[Expression], _: &mut Context) -> Expression {
@@ -75,9 +73,8 @@ pub fn or(args: &[Expression], _: &mut Context) -> Expression {
         .unwrap_or_else(|ex| Exception(Signature("bool".into(), ex.type_of())))
 }
 
-/// ```rustlisp
-/// not :: bool -> bool
-/// ```
+/// `not :: bool -> bool`
+///
 /// Produces the opposite of the specified value.
 pub fn not(args: &[Expression], _: &mut Context) -> Expression {
     match args {
@@ -87,9 +84,8 @@ pub fn not(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// + :: num ... -> num
-/// ```
+/// `+ :: num ... -> num`
+///
 /// Produces the sum of the two specified values.
 pub fn add(args: &[Expression], _: &mut Context) -> Expression {
     let xs: Result<Vec<_>, &Expression> = args
@@ -104,9 +100,8 @@ pub fn add(args: &[Expression], _: &mut Context) -> Expression {
         .unwrap_or_else(|e| Exception(Signature("num".into(), e.type_of())))
 }
 
-/// ```rustlisp
-/// - :: num ... -> num
-/// ```
+/// `- :: num ... -> num`
+///
 /// Produces the difference of the two specified values.
 pub fn sub(args: &[Expression], _: &mut Context) -> Expression {
     match args.len() {
@@ -139,9 +134,8 @@ pub fn sub(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// * :: num ... -> num
-/// ```
+/// `* :: num ... -> num`
+///
 /// Produces the product of the two specified values.
 pub fn mul(args: &[Expression], _: &mut Context) -> Expression {
     let xs: Result<Vec<_>, &Expression> = args
@@ -156,9 +150,8 @@ pub fn mul(args: &[Expression], _: &mut Context) -> Expression {
         .unwrap_or_else(|e| Exception(Signature("num".into(), e.type_of())))
 }
 
-/// ```rustlisp
-/// / :: num ... -> num
-/// ```
+/// `/ :: num ... -> num`
+///
 /// Produces the quotient of the two specified values.
 pub fn div(args: &[Expression], _: &mut Context) -> Expression {
     match args.len() {
@@ -191,9 +184,8 @@ pub fn div(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// % :: num num -> num
-/// ```
+/// `% :: num num -> num`
+///
 /// Produces the remainder of the two specified values.
 pub fn rem(args: &[Expression], _: &mut Context) -> Expression {
     binary_fn(args, Rem::rem)
@@ -201,9 +193,8 @@ pub fn rem(args: &[Expression], _: &mut Context) -> Expression {
 
 // Exceptions
 
-/// ```rustlisp
-/// arity-exception :: num num -> exception
-/// ```
+/// `arity-exception :: num num -> exception`
+///
 /// Produces an arity exception with the specified parameters.
 pub fn arity_exception(args: &[Expression], _: &mut Context) -> Expression {
     match args {
@@ -217,9 +208,8 @@ pub fn arity_exception(args: &[Expression], _: &mut Context) -> Expression {
 
 // Lists
 
-/// ```rustlisp
-/// cons :: a [a] -> [a]
-/// ```
+/// `cons :: a [a] -> [a]`
+///
 /// Produces a new list with the specified value prepended to it.
 pub fn cons(args: &[Expression], _: &mut Context) -> Expression {
     match args {
@@ -232,9 +222,8 @@ pub fn cons(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// head :: [a] -> a
-/// ```
+/// `head :: [a] -> a`
+///
 /// Produces the first element of the specified list.
 pub fn head(args: &[Expression], _: &mut Context) -> Expression {
     match args {
@@ -250,9 +239,8 @@ pub fn head(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// tail :: [a] -> [a]
-/// ```
+/// `tail :: [a] -> [a]`
+///
 /// Produces the remainder of the specified list after the first element.
 pub fn tail(args: &[Expression], _: &mut Context) -> Expression {
     match args {
@@ -268,9 +256,8 @@ pub fn tail(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// exit :: num -> nil
-/// ```
+/// `exit :: num -> nil`
+///
 /// Exits the program with the specified exit code.
 pub fn exit(args: &[Expression], _: &mut Context) -> Expression {
     use std::process::exit;
@@ -292,9 +279,8 @@ pub fn exit(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// eq? :: a a -> bool
-/// ```
+/// `eq? :: a a -> bool`
+///
 /// Tests the two arguments for equality.
 pub fn eq(args: &[Expression], _: &mut Context) -> Expression {
     match args {
@@ -303,9 +289,8 @@ pub fn eq(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// < :: a a -> bool
-/// ```
+/// `< :: a a -> bool`
+///
 /// Determines whether or not the first argument is less than the second.
 pub fn lt(args: &[Expression], _: &mut Context) -> Expression {
     match args {
@@ -318,9 +303,8 @@ pub fn lt(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// <= :: a a -> bool
-/// ```
+/// `<= :: a a -> bool`
+///
 /// Determines whether or not the first argument is less than or equal to the
 /// second.
 pub fn lte(args: &[Expression], _: &mut Context) -> Expression {
@@ -334,9 +318,8 @@ pub fn lte(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// > :: a a -> bool
-/// ```
+/// `> :: a a -> bool`
+///
 /// Determines whether or not the first argument is greater than the second.
 pub fn gt(args: &[Expression], _: &mut Context) -> Expression {
     match args {
@@ -349,9 +332,8 @@ pub fn gt(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// >= :: a a -> bool
-/// ```
+/// `>= :: a a -> bool`
+///
 /// Determines whether or not the first argument is greater than or equal to
 /// the second.
 pub fn gte(args: &[Expression], _: &mut Context) -> Expression {
@@ -365,9 +347,8 @@ pub fn gte(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// println :: a ... -> nil
-/// ```
+/// `println :: a ... -> nil`
+///
 /// Prints the specified values, separated by spaces.
 pub fn display(args: &[Expression], _: &mut Context) -> Expression {
     for arg in args {
@@ -384,9 +365,8 @@ pub fn display(args: &[Expression], _: &mut Context) -> Expression {
         .unwrap_or_else(|ex| Exception(ex))
 }
 
-/// ```rustlisp
-/// display-debug :: a ... -> nil
-/// ```
+/// `display-debug :: a ... -> nil`
+///
 /// Prints the specified values in debug mode, separated by spaces.
 pub fn display_debug(args: &[Expression], _: &mut Context) -> Expression {
     for arg in args {
@@ -403,9 +383,8 @@ pub fn display_debug(args: &[Expression], _: &mut Context) -> Expression {
         .unwrap_or_else(|ex| Exception(ex))
 }
 
-/// ```rustlisp
-/// newline :: -> nil
-/// ```
+/// `newline :: -> nil`
+///
 /// Prints a new line.
 pub fn newline(args: &[Expression], _: &mut Context) -> Expression {
     if args.len() == 0 {
@@ -416,9 +395,8 @@ pub fn newline(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// append :: [a] ... -> [a]
-/// ```
+/// `append :: [a] ... -> [a]`
+///
 /// Append all specified lists to the first specified list.
 pub fn append(args: &[Expression], _: &mut Context) -> Expression {
     // Try lists
@@ -455,9 +433,8 @@ pub fn append(args: &[Expression], _: &mut Context) -> Expression {
     Exception(Custom(13, "invalid types in append function".into()))
 }
 
-/// ```rustlisp
-/// empty? :: [a] -> bool
-/// ```
+/// `empty? :: [a] -> bool`
+///
 /// Determines whether or not the specified list is empty.
 pub fn empty(args: &[Expression], _: &mut Context) -> Expression {
     match args {
@@ -467,9 +444,8 @@ pub fn empty(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// eval :: a -> b
-/// ```
+/// `eval :: a -> b`
+///
 /// Evaluates the specified expression.
 pub fn eval(args: &[Expression], ctx: &mut Context) -> Expression {
     match args {
@@ -478,9 +454,8 @@ pub fn eval(args: &[Expression], ctx: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// readfile :: str -> str
-/// ```
+/// `readfile :: str -> str`
+///
 /// Reads the file with the specified name to a string.
 pub fn readfile(args: &[Expression], _: &mut Context) -> Expression {
     fn read_file(name: &str) -> Result<String, io::Error> {
@@ -563,9 +538,8 @@ fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
     Ok(expr)
 }
 
-/// ```rustlisp
-/// import :: string -> a
-/// ```
+/// `import :: string -> a`
+///
 /// Reads, parses, and runs the specified file, returning its result.
 pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
     match args {
@@ -582,9 +556,8 @@ pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// readline :: -> string
-/// ```
+/// `readline :: -> string`
+///
 /// Waits for the user to enter a line and returns the contents of the line.
 pub fn readline(args: &[Expression], _: &mut Context) -> Expression {
     match args.len() {
@@ -600,9 +573,8 @@ pub fn readline(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// parse :: string -> expr
-/// ```
+/// `parse :: string -> expr`
+///
 /// Parses the specified string as an expression.
 pub fn parse(args: &[Expression], _: &mut Context) -> Expression {
     match args {
@@ -617,9 +589,8 @@ pub fn parse(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// type-of :: a -> symbol
-/// ```
+/// `type-of :: a -> symbol`
+///
 /// Produces the type of the specified expression.
 pub fn type_of(args: &[Expression], _: &mut Context) -> Expression {
     match args {
@@ -729,14 +700,12 @@ fn format_str(sections: &[StrSection], env: &mut Context) -> Expression {
     Str(buf.into())
 }
 
-/// ```rustlisp
-/// format :: string -> string
-/// ```
+/// `format :: string -> string`
+///
 /// Interpolates all sections of the specified string enclosed with #{}. As an
 /// example:
-/// ```rustlisp
-/// (format "1 + 2 = #{(+ 1 2)}")
-/// ```
+/// `(format "1 + 2 = #{(+ 1 2)}")`
+///
 /// Produces "1 + 2 = 3".
 pub fn format(args: &[Expression], env: &mut Context) -> Expression {
     match args {
@@ -749,9 +718,8 @@ pub fn format(args: &[Expression], env: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// set :: symbol a -> nil
-/// ```
+/// `set :: symbol a -> nil`
+///
 /// Sets the value stored at the specified symbol to the specified value,
 /// overriding any previous value.
 pub fn set(args: &[Expression], env: &mut Context) -> Expression {
@@ -769,99 +737,86 @@ pub fn set(args: &[Expression], env: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// sqrt :: num -> num
-/// ```
+/// `sqrt :: num -> num`
+///
 /// Produces the square root of the specified number.
 pub fn sqrt(args: &[Expression], _: &mut Context) -> Expression {
     unary_fn(args, f64::sqrt)
 }
 
-/// ```rustlisp
-/// sin :: num -> num
-/// ```
+/// `sin :: num -> num`
+///
 /// Produces the spin of the specified number.
 pub fn sin(args: &[Expression], _: &mut Context) -> Expression {
     unary_fn(args, f64::sin)
 }
 
-/// ```rustlisp
-/// sqrt :: num -> num
-/// ```
+/// `sqrt :: num -> num`
+///
 /// Produces the cosine of the specified number.
 pub fn cos(args: &[Expression], _: &mut Context) -> Expression {
     unary_fn(args, f64::cos)
 }
 
-/// ```rustlisp
-/// tan :: num -> num
-/// ```
+/// `tan :: num -> num`
+///
 /// Produces the tangent of the specified number.
 pub fn tan(args: &[Expression], _: &mut Context) -> Expression {
     unary_fn(args, f64::tan)
 }
 
-/// ```rustlisp
-/// csc :: num -> num
-/// ```
+/// `csc :: num -> num`
+///
 /// Produces the cosecant of the specified number.
 pub fn csc(args: &[Expression], _: &mut Context) -> Expression {
     unary_fn(args, |x| 1.0 / x.sin())
 }
 
-/// ```rustlisp
-/// sec :: num -> num
-/// ```
+/// `sec :: num -> num`
+///
 /// Produces the secant of the specified number.
 pub fn sec(args: &[Expression], _: &mut Context) -> Expression {
     unary_fn(args, |x| 1.0 / x.cos())
 }
 
-/// ```rustlisp
-/// cot :: num -> num
-/// ```
+/// `cot :: num -> num`
+///
 /// Produces the cotangent of the specified number.
 pub fn cot(args: &[Expression], _: &mut Context) -> Expression {
     unary_fn(args, |x| 1.0 / x.tan())
 }
 
-/// ```rustlisp
-/// asin :: num -> num
-/// ```
+/// `asin :: num -> num`
+///
 /// Produces the arcsine of the specified number.
 pub fn asin(args: &[Expression], _: &mut Context) -> Expression {
     unary_fn(args, f64::asin)
 }
 
-/// ```rustlisp
-/// acos :: num -> num
-/// ```
+/// `acos :: num -> num`
+///
 /// Produces the arccosine of the specified number.
 pub fn acos(args: &[Expression], _: &mut Context) -> Expression {
     unary_fn(args, f64::acos)
 }
 
-/// ```rustlisp
-/// atan :: num -> num
-/// ```
+/// `atan :: num -> num`
+///
 /// Produces the arctangent of the specified number.
 pub fn atan(args: &[Expression], _: &mut Context) -> Expression {
     unary_fn(args, f64::atan)
 }
 
-/// ```rustlisp
-/// atan2 :: num num -> num
-/// ```
+/// `atan2 :: num num -> num`
+///
 /// Produces the atan2 of the specified numbers.
 pub fn atan2(args: &[Expression], _: &mut Context) -> Expression {
     binary_fn(args, f64::atan2)
 }
 
-/// ```rustlisp
-/// display-pretty :: color style str -> nil
-/// where color = 'red | 'yellow | 'green | 'blue | 'none
-///       style = 'bold | 'normal
-/// ```
+/// `display-pretty :: symbol symbol str -> nil`
+///
+/// Prints the specified string using the specified formatting options.
 pub fn display_pretty(args: &[Expression], _: &mut Context) -> Expression {
     fn get_style(style: impl AsRef<str>) -> Result<Style, Exception> {
         match style.as_ref() {

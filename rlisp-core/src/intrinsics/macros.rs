@@ -45,9 +45,8 @@ fn create_lambda(
         })
 }
 
-/// ```rustlisp
-/// (lambda [<param1> ...] <body1> ...)
-/// ```
+/// `(lambda [<param1> ...] <body1> ...)`
+///
 /// Produces a `Lambda` with the specified parameters and body.
 pub fn lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let params = list.tail().and_then(|list| list.head());
@@ -63,10 +62,8 @@ pub fn lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// (define <ident> <value>)
-/// (define (<ident> <param1> ...) <expr1> ...)
-/// ```
+/// `(define <ident> <value>) | (define (<ident> <param1> ...) <expr1> ...)`
+///
 /// Defines either a constant or a function with the specified name and value.
 pub fn define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     list.tail()
@@ -169,9 +166,8 @@ pub fn define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         }).unwrap_or_else(|ex| Exception(ex))
 }
 
-/// ```rustlisp
-/// (env <ident>)
-/// ```
+/// `(env <ident>)`
+///
 /// Looks up the specified identifier in the current evaluation context.
 pub fn env(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let arg = list
@@ -186,9 +182,8 @@ pub fn env(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     }).unwrap_or_else(|| Exception(Arity(1, 99)))
 }
 
-/// ```rustlisp
-/// (if <cond> <then> <else>)
-/// ```
+/// `(if <cond> <then> <else>)`
+///
 /// If the condition is true, <then> is returned. Otherwise, <else> is
 /// returned.
 pub fn if_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
@@ -222,9 +217,8 @@ pub fn if_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// (cond [<pred> <expr>] ...)
-/// ```
+/// `(cond [<pred> <expr>] ...)`
+///
 /// Iterates through the predicates until one evaluaes to true. That
 /// predicate's matching value is returned.
 pub fn cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
@@ -279,9 +273,8 @@ pub fn cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     Expression::default()
 }
 
-/// ```rustlisp
-/// (let ([<name> <value>] ...) <expr> ...)
-/// ```
+/// `(let ([<name> <value>] ...) <expr> ...)`
+///
 /// Binds the specified values to the specified identifiers, creating a new
 /// context, and evaluating the specified body expressions in that new context.
 pub fn let_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
@@ -346,9 +339,8 @@ pub fn let_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     body.unwrap_or_else(Exception)
 }
 
-/// ```rustlisp
-/// (try <expr> <handler>)
-/// ```
+/// `(try <expr> <handler>)`
+///
 /// Attempts to evaluate the specified expression. If an exception is thrown,
 /// the specified handler is called with data on the exception as its argument.
 pub fn try_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
@@ -384,9 +376,8 @@ pub fn try_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     }
 }
 
-/// ```rustlisp
-/// (define-struct <name> [<field1> ...])
-/// ```
+/// `(define-struct <name> [<field1> ...])`
+///
 /// Creates a custom struct type, providing a name and field names. A number of
 /// functions are in turn created:
 /// * `make-<name> :: a ... -> <name>`
@@ -570,9 +561,8 @@ pub fn define_struct(
 //     set_helper(list, env).unwrap_or_else(|ex| Exception(ex))
 // }
 
-/// ```rustlisp
-/// (begin <expr> ...)
-/// ```
+/// `(begin <expr> ...)`
+///
 /// Evalulates all provided expressions. The result of the last expression is
 /// returned.
 pub fn begin(list: ConsList<Expression>, env: &mut Context) -> Expression {
