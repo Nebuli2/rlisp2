@@ -15,6 +15,8 @@ use crate::{
 use im::ConsList;
 use std::rc::Rc;
 
+/// Creates a lambda with the specified parameters and body, capturing
+/// variables from the specified context. At the time of creation.
 fn create_lambda(
     params: ConsList<Expression>,
     body: ConsList<Expression>,
@@ -57,7 +59,6 @@ pub fn lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
             Cons(list) => create_lambda(list.clone(), body, ctx),
             _ => Exception(Syntax(17, "(lambda [args...] body)".into())),
         },
-        // create_lambda(params.clone(), body.clone()),
         _ => Exception(Syntax(17, "(lambda [args...] body)".into())),
     }
 }
@@ -186,6 +187,16 @@ pub fn env(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
 ///
 /// If the condition is true, <then> is returned. Otherwise, <else> is
 /// returned.
+///
+/// # Examples
+/// ```rustlisp
+/// (define x 10)
+/// ; ...
+/// (if (eq? x 10)
+///     'ten
+///     'not-ten)
+/// ; Is equal to 'ten
+/// ```
 pub fn if_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let cond = list
         .tail()
@@ -221,6 +232,16 @@ pub fn if_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
 ///
 /// Iterates through the predicates until one evaluaes to true. That
 /// predicate's matching value is returned.
+///
+/// # Examples
+/// ```rustlisp
+/// (define x 10)
+/// ; ...
+/// (cond [(eq? x 5) 'five]
+///       [(eq? x 10) 'ten]
+///       [else 'other])
+/// ; Is equal to 'ten
+/// ```
 pub fn cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     ctx.ascend_scope();
 
@@ -277,6 +298,14 @@ pub fn cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
 ///
 /// Binds the specified values to the specified identifiers, creating a new
 /// context, and evaluating the specified body expressions in that new context.
+///
+/// # Examples
+/// ```rustlisp
+/// (let ([x 1]
+///       [y (+ x 1)])
+///     (+ x y))
+/// ; Is equal to 3
+/// ```
 pub fn let_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let bindings = list.tail().and_then(|tail| tail.head());
     let body = list.tail().and_then(|list| list.tail());

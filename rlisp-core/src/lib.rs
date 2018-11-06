@@ -1,7 +1,26 @@
-//! Foo
+//! This crate provides an interpreter for the rlisp language.
+//! # Examples
+//! ```rust
+//! # use std::error::Error;
+//! # fn main() -> Result<(), Box<Error>> {
+//! # use crate::prelude::*;
+//!
+//! // Create an expression to run
+//! let code = "(+ 1 2 3)";
+//! let mut parser = Parser::new(code.chars());
+//! let expr = parser.parse_expr()?;
+//!
+//! // Create evaluation context for expression
+//! let mut ctx = init_ctx();
+//!
+//! // Evaluate the expression
+//! let res = expr.eval(&mut ctx);
+//! println!("{}", res);
+//! # }
+//! ```
 
 #![forbid(unsafe_code)]
-#![deny(missing_docs)]
+#![warn(missing_docs)]
 
 pub extern crate im;
 extern crate termcolor;

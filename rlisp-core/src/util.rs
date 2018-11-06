@@ -18,7 +18,7 @@ macro_rules! cons {
     })
 }
 
-/// Represents an immutable, reference-counted string.
+/// An immutable, reference-counted string.
 pub type Str = Rc<str>;
 
 /// Produces an expression equal to `nil`.
@@ -93,11 +93,11 @@ pub fn print_prompt(prompt: impl AsRef<str>) {
         .expect("failed to set stdout color");
 }
 
-/// Represents the style options available for printing text.
+/// The style options available for printing text.
 pub enum Style {
-    /// Represents bold text.
+    /// Bold text.
     Bold,
-    /// Represents normal text.
+    /// Normal text.
     Normal,
 }
 

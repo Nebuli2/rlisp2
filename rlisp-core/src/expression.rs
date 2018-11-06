@@ -13,10 +13,10 @@ use crate::{
 use im::ConsList;
 use std::{fmt, rc::Rc};
 
-/// Represents the expressions captured by a closure.
+/// The expressions captured by a closure.
 pub type Capture = HashMap<Str, Expression>;
 
-/// Represents the data stored by an instance of a custom struct type.
+/// The data stored by an instance of a custom struct type.
 pub struct StructData {
     /// The name of the struct type.
     pub name: Str,
@@ -25,7 +25,7 @@ pub struct StructData {
     pub data: Vec<Expression>,
 }
 
-/// Represents any value that may be called as a function.
+/// Any value that may be called as a function.
 #[derive(Clone)]
 pub enum Callable {
     /// A quote, i.e. `(quote hello)`. When a quote expression is evaluated,
@@ -43,21 +43,21 @@ pub enum Callable {
     /// should be evaluated.
     Unquote,
 
-    /// A lambda represents a custom function, provided a list of parameter
-    /// symbols, a body expression, and a map of captured expressions. All
-    /// values referenced in the body of the `Lambda` are captured by value at
-    /// the site of its creation.
+    /// A custom function, provided a list of parameter symbols, a body 
+    /// expression, and a map of captured expressions. All values referenced 
+    /// in the body of the `Lambda` are captured by value at the site of its 
+    /// creation.
     Lambda(ConsList<Str>, Rc<Expression>, Option<Capture>),
 
-    /// Represents an intrinsic function, taking a slice of expressions and
+    /// An intrinsic function, taking a slice of expressions and
     /// returning another expression.
     Intrinsic(Rc<Fn(&[Expression], &mut Context) -> Expression>),
 
-    /// Represents a macro that transforms the expression into a new expression.
+    /// A macro that transforms the expression into a new expression.
     Macro(Rc<Fn(ConsList<Expression>, &mut Context) -> Expression>),
 }
 
-/// Represents an expression in the rlisp language.
+/// An expression in the rlisp language.
 #[derive(Clone)]
 pub enum Expression {
     /// A boolean expression.

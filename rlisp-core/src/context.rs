@@ -4,10 +4,10 @@
 use expression::Expression;
 use std::collections::HashMap;
 
-/// Represents the ID of an rlisp struct type.
+/// The ID of an rlisp struct type.
 type StructId = usize;
 
-/// Represents an individual scope in the evaluation context.
+/// An individual scope in the evaluation context.
 struct Scope {
     bindings: HashMap<String, Expression>,
     structs: HashMap<String, StructId>,
