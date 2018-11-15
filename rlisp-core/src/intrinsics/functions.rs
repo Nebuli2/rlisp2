@@ -930,3 +930,21 @@ pub fn ln(args: &[Expression], _: &mut Context) -> Expression {
         xs => Exception(Arity(1, xs.len())),
     }
 }
+
+pub fn env_var(args: &[Expression], _: &mut Context) -> Expression {
+    use std::env;
+    match args {
+        [Str(s)] => {
+            if let Ok(var) = env::var(s.as_ref()) {
+                Str(var.into())
+            } else {
+                Exception(Custom(
+                    36,
+                    format!("undefined environment variable: \"{}\"", s).into(),
+                ))
+            }
+        }
+        [x] => Exception(Signature("str".into(), x.type_of())),
+        xs => Exception(Arity(1, xs.len())),
+    }
+}

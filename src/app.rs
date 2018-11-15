@@ -5,6 +5,8 @@ use rlisp_core::{
     util::print_err,
 };
 
+const RLISP_HOME: &str = env!("RLISP_HOME");
+
 fn create_app<'a>() -> ArgMatches<'a> {
     App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
@@ -14,7 +16,7 @@ fn create_app<'a>() -> ArgMatches<'a> {
             .short("L")
             .long("lib")
             .value_name("LIB_LOC")
-            .help("Sets the location to load the standard library from")
+            .help("Sets the location to load the standard library from. The loader file must specify a (interactive-start) function that is called if interactive mode is enabled.")
             .takes_value(true)
             .required(false))
         .arg(Arg::with_name("INPUT")
@@ -32,9 +34,11 @@ fn create_app<'a>() -> ArgMatches<'a> {
 
 pub fn run() {
     let matches = create_app();
+
     let lib_loc = matches
-        .value_of("lib")
-        .unwrap_or_else(|| "rlisp-lib/loader.rl");
+        .value_of("lib-loc")
+        .map(ToString::to_string)
+        .unwrap_or_else(|| format!("{}/loader.rl", RLISP_HOME));
 
     let mut ctx = init_context();
     let res = import(&[Str(lib_loc.into())], &mut ctx);

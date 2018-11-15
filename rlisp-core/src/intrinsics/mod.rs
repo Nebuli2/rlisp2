@@ -161,6 +161,7 @@ fn load_functions(ctx: &mut Context) {
         "quat" => quaternion,
         "exp" => exp,
         "ln" => ln,
+        "env-var" => env_var,
     }
 
     // Boolean logic

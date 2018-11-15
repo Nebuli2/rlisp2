@@ -3,7 +3,7 @@ use rlisp_core::prelude::*;
 use rlisp_core::util::print_err;
 
 const REPL: &str = r#"
-    (start-repl)
+    (interactive-start)
 "#;
 
 pub fn run_repl(ctx: &mut Context) {
