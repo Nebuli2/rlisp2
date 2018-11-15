@@ -6,3 +6,5 @@ authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
 [dependencies]
 im = "10.2.0"
 termcolor = "0.3.6"
+regex = "1"
+lazy_static = "1.2"

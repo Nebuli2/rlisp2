@@ -42,7 +42,7 @@
         (begin
             (define value (eval (parse (readline))))
             (if {value /= empty}
-                (println value)
+                (printf "=> #{value}\n")
                 nil)
             (set! '_ value))
         err)

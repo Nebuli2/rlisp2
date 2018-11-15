@@ -8,6 +8,7 @@ use crate::{
     exception::Exception::{self, *},
     expression::Expression::{self, *},
     parser::{preprocessor::*, Parser},
+    quat::Quat,
     util::{print_pretty, wrap_begin, Style},
 };
 use im::ConsList;
@@ -95,9 +96,26 @@ pub fn add(args: &[Expression], _: &mut Context) -> Expression {
             other => Err(other),
         }).collect();
 
-    xs.map(|xs| xs.into_iter().fold(0.0, Add::add))
-        .map(|x| Num(x))
-        .unwrap_or_else(|e| Exception(Signature("num".into(), e.type_of())))
+    if let Ok(xs) = xs {
+        Num(xs.into_iter().fold(0.0, Add::add))
+    } else {
+        // Try quaternions
+        let xs: Result<Vec<_>, &Expression> = args
+            .iter()
+            .map(|expr| match expr {
+                Num(n) => Ok(Quat::from(*n)),
+                Quaternion(n) => Ok(*n),
+                other => Err(other),
+            }).collect();
+        if let Ok(xs) = xs {
+            Quaternion(xs.into_iter().fold(Quat::default(), Add::add))
+        } else {
+            Exception(Arity(0, 0))
+        }
+    }
+    // xs.map(|xs| xs.into_iter().fold(0.0, Add::add))
+    //     .map(|x| Num(x))
+    //     .unwrap_or_else(|e| Exception(Signature("num".into(), e.type_of())))
 }
 
 /// `- :: num ... -> num`
@@ -145,9 +163,23 @@ pub fn mul(args: &[Expression], _: &mut Context) -> Expression {
             other => Err(other),
         }).collect();
 
-    xs.map(|xs| xs.into_iter().fold(1.0, Mul::mul))
-        .map(|x| Num(x))
-        .unwrap_or_else(|e| Exception(Signature("num".into(), e.type_of())))
+    if let Ok(xs) = xs {
+        Num(xs.into_iter().fold(1.0, Mul::mul))
+    } else {
+        // Try quaternions
+        let xs: Result<Vec<_>, &Expression> = args
+            .iter()
+            .map(|expr| match expr {
+                Num(n) => Ok(Quat::from(*n)),
+                Quaternion(n) => Ok(*n),
+                other => Err(other),
+            }).collect();
+        if let Ok(xs) = xs {
+            Quaternion(xs.into_iter().fold(Quat(1.0, 0.0, 0.0, 0.0), Mul::mul))
+        } else {
+            Exception(Arity(0, 0))
+        }
+    }
 }
 
 /// `/ :: num ... -> num`
@@ -741,7 +773,13 @@ pub fn set(args: &[Expression], env: &mut Context) -> Expression {
 ///
 /// Produces the square root of the specified number.
 pub fn sqrt(args: &[Expression], _: &mut Context) -> Expression {
-    unary_fn(args, f64::sqrt)
+    // unary_fn(args, f64::sqrt)
+    match args {
+        &[Num(n)] if n >= 0.0 => Num(f64::sqrt(n)),
+        &[Num(n)] => Quaternion(Quat(0.0, f64::sqrt(-n), 0.0, 0.0)),
+        [x] => Exception(Signature("num".into(), x.type_of())),
+        xs => Exception(Arity(1, xs.len())),
+    }
 }
 
 /// `sin :: num -> num`
@@ -858,5 +896,37 @@ pub fn display_pretty(args: &[Expression], _: &mut Context) -> Expression {
                 .into(),
         )),
         xs => Exception(Arity(2, xs.len())),
+    }
+}
+
+/// `quaternion :: num num num num -> quaternion`
+pub fn quaternion(args: &[Expression], _: &mut Context) -> Expression {
+    match args {
+        [Num(a), Num(b), Num(c), Num(d)] => {
+            Quaternion(Quat(a.clone(), b.clone(), c.clone(), d.clone()))
+        }
+        [a, b, c, d] => Exception(Signature(
+            "(num, num, num, num)".into(),
+            format!("({}, {}, {}, {})", a, b, c, d).into(),
+        )),
+        xs => Exception(Arity(4, xs.len())),
+    }
+}
+
+pub fn exp(args: &[Expression], _: &mut Context) -> Expression {
+    match args {
+        [Num(a)] => Num(f64::exp(*a)),
+        [Quaternion(q)] => Quaternion(q.exp()),
+        [x] => Exception(Signature("num".into(), x.type_of())),
+        xs => Exception(Arity(1, xs.len())),
+    }
+}
+
+pub fn ln(args: &[Expression], _: &mut Context) -> Expression {
+    match args {
+        [Num(a)] => Num(f64::ln(*a)),
+        [Quaternion(q)] => Quaternion(Quat::ln(q)),
+        [x] => Exception(Signature("num".into(), x.type_of())),
+        xs => Exception(Arity(1, xs.len())),
     }
 }

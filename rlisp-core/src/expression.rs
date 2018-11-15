@@ -8,6 +8,7 @@ use crate::{
         self,
         Exception::{self, *},
     },
+    quat::Quat,
     util::Str,
 };
 use im::ConsList;
@@ -43,9 +44,9 @@ pub enum Callable {
     /// should be evaluated.
     Unquote,
 
-    /// A custom function, provided a list of parameter symbols, a body 
-    /// expression, and a map of captured expressions. All values referenced 
-    /// in the body of the `Lambda` are captured by value at the site of its 
+    /// A custom function, provided a list of parameter symbols, a body
+    /// expression, and a map of captured expressions. All values referenced
+    /// in the body of the `Lambda` are captured by value at the site of its
     /// creation.
     Lambda(ConsList<Str>, Rc<Expression>, Option<Capture>),
 
@@ -66,6 +67,8 @@ pub enum Expression {
     /// A numerical expression. Numbers are represented in double floating
     /// point precision, adhering to the IEEE 754 standard.
     Num(f64),
+
+    Quaternion(Quat),
 
     /// An immutable string expression.
     Str(Str),
@@ -96,6 +99,7 @@ impl Expression {
     pub fn type_of(&self) -> Str {
         match self {
             Num(..) => "num".into(),
+            Quaternion(..) => "quaternion".into(),
             Bool(..) => "bool".into(),
             Str(..) => "string".into(),
             Cons(..) => "cons".into(),
@@ -326,6 +330,7 @@ impl fmt::Display for Expression {
         match self {
             Bool(b) => write!(f, "{}", b),
             Num(n) => write!(f, "{}", n),
+            Quaternion(n) => write!(f, "{}", n),
             Str(s) => write!(f, "\"{}\"", s),
             Symbol(s) => write!(f, "{}", s),
             Cons(list) => {
@@ -401,6 +406,9 @@ impl PartialEq for Expression {
     fn eq(&self, other: &Expression) -> bool {
         match (self, other) {
             (Num(a), Num(b)) => a == b,
+            (Quaternion(a), Quaternion(b)) => a == b,
+            (&Num(a), &Quaternion(b)) => Quat::from(a) == b,
+            (&Quaternion(a), &Num(b)) => a == Quat::from(b),
             (Str(a), Str(b)) => a == b,
             (Bool(a), Bool(b)) => a == b,
             (Symbol(a), Symbol(b)) => a == b,

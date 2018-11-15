@@ -2,3 +2,4 @@
 (import "rlisp-lib/stdlib.rl")
 (import "rlisp-lib/repl.rl")
 (import "rlisp-lib/error.rl")
+(import "rlisp-lib/map.rl")

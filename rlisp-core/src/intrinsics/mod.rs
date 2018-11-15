@@ -13,6 +13,7 @@ pub fn init_context() -> Context {
     let mut ctx = Context::new();
     load_functions(&mut ctx);
     load_macros(&mut ctx);
+    ctx.insert("pi", Expression::Num(std::f64::consts::PI));
     ctx
 }
 
@@ -156,6 +157,10 @@ fn load_functions(ctx: &mut Context) {
         "parse" => parse,
         "type-of" => type_of,
         "format" => format,
+
+        "quat" => quaternion,
+        "exp" => exp,
+        "ln" => ln,
     }
 
     // Boolean logic

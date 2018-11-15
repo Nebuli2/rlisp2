@@ -20,10 +20,14 @@
 //! ```
 
 #![forbid(unsafe_code)]
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 
 pub extern crate im;
 extern crate termcolor;
+
+#[macro_use]
+extern crate lazy_static;
+extern crate regex;
 
 #[macro_use]
 pub mod util;
@@ -35,6 +39,9 @@ pub mod intrinsics;
 
 #[macro_use]
 pub mod parser;
+
+pub mod math;
+pub mod quat;
 
 /// The prelude module re-exports commonly used portions of the `rlisp_core`
 /// crate for easier access.

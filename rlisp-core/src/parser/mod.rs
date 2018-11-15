@@ -15,8 +15,82 @@ use crate::{
     util::{nil, wrap_begin},
 };
 use im::ConsList;
+use regex::Regex;
 
 pub mod preprocessor;
+
+const QUAT_REGEX_STR_ABCD: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)i([+-]?[0-9]+(\.[0-9]*)?)j([+-]?[0-9]+(\.[0-9]*)?)k";
+
+const QUAT_REGEX_STR_AB: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)i";
+
+const QUAT_REGEX_STR_AC: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)j";
+
+const QUAT_REGEX_STR_AD: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)k";
+
+const QUAT_REGEX_STR_BC: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)i([+-]?[0-9]+(\.[0-9]*)?)j";
+
+const QUAT_REGEX_STR_BD: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)i([+-]?[0-9]+(\.[0-9]*)?)k";
+
+const QUAT_REGEX_STR_CD: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)j([+-]?[0-9]+(\.[0-9]*)?)k";
+
+const QUAT_REGEX_STR_ABC: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)i([+-]?[0-9]*(\.[0-9]*)?)j";
+
+const QUAT_REGEX_STR_ABD: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)i([+-]?[0-9]*(\.[0-9]*)?)k";
+
+const QUAT_REGEX_STR_ACD: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)j([+-]?[0-9]+(\.[0-9]*)?)k";
+
+const QUAT_REGEX_STR_BCD: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)i([+-]?[0-9]+(\.[0-9]*)?)j([+-]?[0-9]+(\.[0-9]*)?)k";
+
+const QUAT_REGEX_STR_B: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)i";
+
+const QUAT_REGEX_STR_C: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)j";
+
+const QUAT_REGEX_STR_D: &str = 
+    r"([+-]?[0-9]+(\.[0-9]*)?)k";
+
+lazy_static! {
+    static ref QUAT_REGEX_ABCD: Regex =
+        Regex::new(QUAT_REGEX_STR_ABCD).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_AB: Regex =
+        Regex::new(QUAT_REGEX_STR_AB).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_AC: Regex =
+        Regex::new(QUAT_REGEX_STR_AC).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_AD: Regex =
+        Regex::new(QUAT_REGEX_STR_AD).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_BC: Regex =
+        Regex::new(QUAT_REGEX_STR_BC).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_BD: Regex =
+        Regex::new(QUAT_REGEX_STR_BD).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_CD: Regex =
+        Regex::new(QUAT_REGEX_STR_CD).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_ABC: Regex =
+        Regex::new(QUAT_REGEX_STR_ABC).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_ABD: Regex =
+        Regex::new(QUAT_REGEX_STR_ABD).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_ACD: Regex =
+        Regex::new(QUAT_REGEX_STR_ACD).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_BCD: Regex =
+        Regex::new(QUAT_REGEX_STR_BCD).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_B: Regex =
+        Regex::new(QUAT_REGEX_STR_B).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_C: Regex =
+        Regex::new(QUAT_REGEX_STR_C).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_D: Regex =
+        Regex::new(QUAT_REGEX_STR_D).expect("quaternion regex failed to compile");
+}
 
 /// Stores information regarding the current state of the parser, in particular
 /// its progress within whatever it is parsing, and a stack of characters to be
@@ -27,6 +101,165 @@ where
 {
     iter: I::IntoIter,
     stack: Vec<char>,
+}
+
+use quat::Quat;
+use std::str::FromStr;
+
+#[derive(Debug)]
+pub struct ParseQuatError;
+
+impl FromStr for Quat {
+    type Err = ParseQuatError;
+
+    fn from_str(s: &str) -> Result<Quat, Self::Err> {
+        if QUAT_REGEX_ABCD.is_match(s) {
+            let caps = QUAT_REGEX_ABCD.captures(s).unwrap();
+            let a_str = caps.get(1).map_or("", |m| m.as_str());
+            let b_str = caps.get(3).map_or("1", |m| m.as_str());
+            let c_str = caps.get(5).map_or("1", |m| m.as_str());
+            let d_str = caps.get(7).map_or("1", |m| m.as_str());
+
+            let a = a_str.parse::<f64>().unwrap_or_default();
+            let b = b_str.parse::<f64>().unwrap_or_default();
+            let c = c_str.parse::<f64>().unwrap_or_default();
+            let d = d_str.parse::<f64>().unwrap_or_default();
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_BCD.is_match(s) {
+            let caps = QUAT_REGEX_BCD.captures(s).unwrap();
+            let b_str = caps.get(1).map_or("1", |m| m.as_str());
+            let c_str = caps.get(3).map_or("1", |m| m.as_str());
+            let d_str = caps.get(5).map_or("1", |m| m.as_str());
+
+            let a = 0.0;
+            let b = b_str.parse::<f64>().unwrap_or_default();
+            let c = c_str.parse::<f64>().unwrap_or_default();
+            let d = d_str.parse::<f64>().unwrap_or_default();
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_BC.is_match(s) {
+            let caps = QUAT_REGEX_BC.captures(s).unwrap();
+            let b_str = caps.get(1).map_or("1", |m| m.as_str());
+            let c_str = caps.get(3).map_or("1", |m| m.as_str());
+
+            let a = 0.0;
+            let b = b_str.parse::<f64>().unwrap_or_default();
+            let c = c_str.parse::<f64>().unwrap_or_default();
+            let d = 0.0;
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_BD.is_match(s) {
+            let caps = QUAT_REGEX_BD.captures(s).unwrap();
+            let b_str = caps.get(1).map_or("1", |m| m.as_str());
+            let d_str = caps.get(3).map_or("1", |m| m.as_str());
+
+            let a = 0.0;
+            let b = b_str.parse::<f64>().unwrap_or_default();
+            let c = 0.0;
+            let d = d_str.parse::<f64>().unwrap_or_default();
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_CD.is_match(s) {
+            let caps = QUAT_REGEX_CD.captures(s).unwrap();
+            let c_str = caps.get(1).map_or("1", |m| m.as_str());
+            let d_str = caps.get(3).map_or("1", |m| m.as_str());
+
+            let a = 0.0;
+            let b = 0.0;
+            let c = c_str.parse::<f64>().unwrap_or_default();
+            let d = d_str.parse::<f64>().unwrap_or_default();
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_ABC.is_match(s) {
+            let caps = QUAT_REGEX_ABC.captures(s).unwrap();
+            let a_str = caps.get(1).map_or("", |m| m.as_str());
+            let b_str = caps.get(3).map_or("1", |m| m.as_str());
+            let c_str = caps.get(5).map_or("1", |m| m.as_str());
+
+            let a = a_str.parse::<f64>().unwrap_or_default();
+            let b = b_str.parse::<f64>().unwrap_or_default();
+            let c = c_str.parse::<f64>().unwrap_or_default();
+            let d = 0.0;
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_ABD.is_match(s) {
+            let caps = QUAT_REGEX_ABD.captures(s).unwrap();
+            let a_str = caps.get(1).map_or("", |m| m.as_str());
+            let b_str = caps.get(3).map_or("1", |m| m.as_str());
+            let d_str = caps.get(5).map_or("1", |m| m.as_str());
+
+            let a = a_str.parse::<f64>().unwrap_or_default();
+            let b = b_str.parse::<f64>().unwrap_or_default();
+            let c = 0.0;
+            let d = d_str.parse::<f64>().unwrap_or_default();
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_ACD.is_match(s) {
+            let caps = QUAT_REGEX_ACD.captures(s).unwrap();
+            let a_str = caps.get(1).map_or("", |m| m.as_str());
+            let c_str = caps.get(3).map_or("1", |m| m.as_str());
+            let d_str = caps.get(5).map_or("1", |m| m.as_str());
+
+            let a = a_str.parse::<f64>().unwrap_or_default();
+            let b = 0.0;
+            let c = c_str.parse::<f64>().unwrap_or_default();
+            let d = d_str.parse::<f64>().unwrap_or_default();
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_AD.is_match(s) {
+            let caps = QUAT_REGEX_AD.captures(s).unwrap();
+            let a_str = caps.get(1).map_or("", |m| m.as_str());
+            let d_str = caps.get(3).map_or("1", |m| m.as_str());
+
+            let a = a_str.parse::<f64>().unwrap_or_default();
+            let b = 0.0;
+            let c = 0.0;
+            let d = d_str.parse::<f64>().unwrap_or_default();
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_AC.is_match(s) {
+            let caps = QUAT_REGEX_AC.captures(s).unwrap();
+            let a_str = caps.get(1).map_or("", |m| m.as_str());
+            let c_str = caps.get(3).map_or("1", |m| m.as_str());
+
+            let a = a_str.parse::<f64>().unwrap_or_default();
+            let b = 0.0;
+            let c = c_str.parse::<f64>().unwrap_or_default();
+            let d = 0.0;
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_AB.is_match(s) {
+            let caps = QUAT_REGEX_AB.captures(s).unwrap();
+            let a_str = caps.get(1).map_or("", |m| m.as_str());
+            let b_str = caps.get(3).map_or("1", |m| m.as_str());
+
+            let a = a_str.parse::<f64>().unwrap_or_default();
+            let b = b_str.parse::<f64>().unwrap_or_default();
+            let c = 0.0;
+            let d = 0.0;
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_B.is_match(s) {
+            let caps = QUAT_REGEX_B.captures(s).unwrap();
+            let b_str = caps.get(1).map_or("1", |m| m.as_str());
+
+            let a = 0.0;
+            let b = b_str.parse::<f64>().unwrap_or_default();
+            let c = 0.0;
+            let d = 0.0;
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_C.is_match(s) {
+            let caps = QUAT_REGEX_C.captures(s).unwrap();
+            let c_str = caps.get(1).map_or("1", |m| m.as_str());
+
+            let a = 0.0;
+            let b = 0.0;
+            let c = c_str.parse::<f64>().unwrap_or_default();
+            let d = 0.0;
+            Ok(Quat(a, b, c, d))
+        } else if QUAT_REGEX_D.is_match(s) {
+            let caps = QUAT_REGEX_D.captures(s).unwrap();
+            let d_str = caps.get(1).map_or("1", |m| m.as_str());
+
+            let a = 0.0;
+            let b = 0.0;
+            let c = 0.0;
+            let d = d_str.parse::<f64>().unwrap_or_default();
+            Ok(Quat(a, b, c, d))
+        } else  {
+            Err(ParseQuatError)
+        }
+    }
 }
 
 impl<I> Parser<I>
@@ -106,6 +339,19 @@ where
                 self.parse_atom()
             }
         })
+    }
+
+    fn parse_quat(&mut self) -> Option<Expression> {
+        // buffer
+        let mut buf = String::new();
+        while let Some(ch) = self.next_char() {
+            if ch.is_whitespace() {
+                break;
+            }
+            buf.push(ch);
+        }
+
+        None
     }
 
     /// Parses an infix function list. Every other element of the list is
@@ -257,12 +503,17 @@ where
                     "quasiquote" => Callable(Quasiquote),
                     "unquote" => Callable(Unquote),
                     _ => {
+                        // Attempt to parse quaternion
+                        if let Ok(q) = s.parse::<Quat>() {
+                            return Quaternion(q);
+                        }
+
                         // Attempt to parse number
                         if let Ok(num) = s.parse::<f64>() {
-                            Num(num)
-                        } else {
-                            Symbol(s.into())
+                            return Num(num);
                         }
+
+                        Symbol(s.into())
                     }
                 }
             })
