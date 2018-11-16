@@ -627,7 +627,7 @@ fn transform_idents_to_hygienic(
 ) -> Expression {
     match expr {
         Symbol(ref ident) if param_names.contains(ident) => {
-            Symbol(hygienic_macro_ident(ident).into())
+            unquote(Symbol(hygienic_macro_ident(ident).into()))
         }
         Cons(list) => Cons(
             list.iter()
@@ -637,6 +637,16 @@ fn transform_idents_to_hygienic(
         ),
         other => other,
     }
+}
+
+fn quasiquote(expr: Expression) -> Expression {
+    let list = ConsList::new().cons(expr).cons(Callable(Quasiquote));
+    Cons(list)
+}
+
+fn unquote(expr: Expression) -> Expression {
+    let list = ConsList::new().cons(expr).cons(Callable(Unquote));
+    Cons(list)
 }
 
 /// `(define-macro (name args ...) expr)`
@@ -690,8 +700,9 @@ pub fn define_rlisp_macro(
                     }
 
                     // Transform body to use hygienic identifiers
-                    let transformed_body =
-                        transform_idents_to_hygienic(&param_names[..], body);
+                    let transformed_body = quasiquote(
+                        transform_idents_to_hygienic(&param_names[..], body),
+                    );
 
                     let hygienic_params: Vec<_> =
                         param_names.iter().map(hygienic_macro_ident).collect();
