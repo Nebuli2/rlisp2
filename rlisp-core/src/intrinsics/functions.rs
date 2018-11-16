@@ -948,3 +948,13 @@ pub fn env_var(args: &[Expression], _: &mut Context) -> Expression {
         xs => Exception(Arity(1, xs.len())),
     }
 }
+
+pub fn string_concat(args: &[Expression], _: &mut Context) -> Expression {
+    let mut buf = String::new();
+
+    for arg in args {
+        buf.push_str(&format!("{}", arg));
+    }
+
+    Str(buf.into())
+}

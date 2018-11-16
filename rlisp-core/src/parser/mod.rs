@@ -523,7 +523,7 @@ where
 /// Determines whether or not the specified character is a valid identifier.
 fn is_valid_ident(ch: char) -> bool {
     match ch {
-        '(' | ')' | '[' | ']' | '{' | '}' | '\'' | '"' | '`' | ',' => false,
+        '(' | ')' | '[' | ']' | '{' | '}' | '\'' | '"' | '`' | ',' | '.' => false,
         _ => true,
     }
 }

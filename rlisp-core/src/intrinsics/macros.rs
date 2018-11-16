@@ -617,6 +617,28 @@ macro_rules! check_arity {
     }};
 }
 
+fn hygienic_macro_ident(s: impl AsRef<str>) -> String {
+    format!(".{}", s.as_ref())
+}
+
+fn transform_idents_to_hygienic(
+    param_names: &[Str],
+    expr: Expression,
+) -> Expression {
+    match expr {
+        Symbol(ref ident) if param_names.contains(ident) => {
+            Symbol(hygienic_macro_ident(ident).into())
+        }
+        Cons(list) => Cons(
+            list.iter()
+                .map(|expr| expr.as_ref().clone())
+                .map(|expr| transform_idents_to_hygienic(param_names, expr))
+                .collect(),
+        ),
+        other => other,
+    }
+}
+
 /// `(define-macro (name args ...) expr)`
 /// # Example
 /// ```
@@ -667,6 +689,13 @@ pub fn define_rlisp_macro(
                         }
                     }
 
+                    // Transform body to use hygienic identifiers
+                    let transformed_body =
+                        transform_idents_to_hygienic(&param_names[..], body);
+
+                    let hygienic_params: Vec<_> =
+                        param_names.iter().map(hygienic_macro_ident).collect();
+
                     let defined_macro =
                         move |list: ConsList<Expression>, ctx: &mut Context| {
                             // Check arity
@@ -679,30 +708,45 @@ pub fn define_rlisp_macro(
                             // }
 
                             // Insert values arguments and store previously defined values
-                            let mut prev_buf = Vec::with_capacity(num_params);
+                            // let mut prev_buf = Vec::with_capacity(num_params);
+                            // let args = list.tail().unwrap_or_default();
+                            // for (param_name, arg) in
+                            //     param_names.iter().zip(args)
+                            // {
+                            //     let prev_value = {
+                            //         let prev_value_ref = ctx.get(param_name);
+                            //         prev_value_ref.cloned()
+                            //     };
+                            //     println!(
+                            //         "previous value of {} = {:?}",
+                            //         param_name, prev_value
+                            //     );
+                            //     prev_buf.push(prev_value);
+                            //     ctx.insert(param_name, arg.as_ref().clone());
+                            // }
+
                             let args = list.tail().unwrap_or_default();
                             for (param_name, arg) in
-                                param_names.iter().zip(args)
+                                hygienic_params.iter().zip(args)
                             {
-                                let prev_value = {
-                                    let prev_value_ref = ctx.get(param_name);
-                                    prev_value_ref.cloned()
-                                };
-                                prev_buf.push(prev_value);
                                 ctx.insert(param_name, arg.as_ref().clone());
                             }
 
-                            let res = body.eval(ctx).eval(ctx);
+                            let res = transformed_body.eval(ctx).eval(ctx);
 
-                            for (param_name, prev_val) in
-                                param_names.iter().zip(prev_buf.into_iter())
-                            {
-                                if let Some(prev) = prev_val {
-                                    ctx.insert(param_name, prev);
-                                } else {
-                                    ctx.remove(param_name);
-                                }
+                            for param_name in hygienic_params.iter() {
+                                ctx.remove(param_name);
                             }
+
+                            // for (param_name, prev_val) in
+                            //     param_names.iter().zip(prev_buf.into_iter())
+                            // {
+                            //     if let Some(prev) = prev_val {
+                            //         ctx.insert(param_name, prev);
+                            //     } else {
+                            //         ctx.remove(param_name);
+                            //     }
+                            // }
 
                             res
                         };

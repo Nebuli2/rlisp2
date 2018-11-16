@@ -331,7 +331,7 @@ impl fmt::Display for Expression {
             Bool(b) => write!(f, "{}", b),
             Num(n) => write!(f, "{}", n),
             Quaternion(n) => write!(f, "{}", n),
-            Str(s) => write!(f, "\"{}\"", s),
+            Str(s) => write!(f, "{}", s),
             Symbol(s) => write!(f, "{}", s),
             Cons(list) => {
                 // Check for quote, quasiquote, unquote special cases

@@ -44,7 +44,7 @@
             (if {value /= empty}
                 (printf "=> #{value}\n")
                 nil)
-            (set! '_ value))
+            (set! _ value))
         err)
     (repl))
 

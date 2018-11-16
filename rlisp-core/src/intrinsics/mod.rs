@@ -134,7 +134,7 @@ fn load_functions(ctx: &mut Context) {
         "||" => or,
         "not" => not,
 
-        "set!" => set,
+        "set-internal!" => set,
 
         // Lists
         "cons" => cons,
@@ -163,6 +163,8 @@ fn load_functions(ctx: &mut Context) {
         "exp" => exp,
         "ln" => ln,
         "env-var" => env_var,
+
+        "string-concat" => string_concat,
     }
 
     // Boolean logic

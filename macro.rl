@@ -1,6 +1,2 @@
-(define-macro (square x)
-    `(* x x))
-
-(define-macro (make-square-named name)
-    `(define (,name x)
-        (* x x)))
+(define-macro (set2! var val)
+    `(set! ',var ,val))
