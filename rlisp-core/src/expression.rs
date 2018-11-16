@@ -364,6 +364,7 @@ impl fmt::Display for Expression {
                 Quote => write!(f, "quote"),
                 Quasiquote => write!(f, "quasiquote"),
                 Unquote => write!(f, "unquote"),
+                Macro(_) => write!(f, "<macro>"),
                 _ => write!(f, "<procedure>"),
             },
             Exception(ex) => write!(f, "error[{:03}]: {}", ex.error_code(), ex),
