@@ -557,39 +557,6 @@ pub fn define_struct(
     }
 }
 
-// pub fn _set(list: ConsList<Expression>, env: &mut Context) -> Expression {
-//     fn set_helper(
-//         list: ConsList<Expression>,
-//         env: &mut Context,
-//     ) -> Result<Expression, Exception> {
-//         match list.len() - 1 {
-//             2 => {
-//                 let ident = list.iter().nth(1).ok_or_else(|| Arity(2, 0))?;
-//                 let ident_str = match ident.as_ref() {
-//                     Symbol(s) => Ok(s),
-//                     other => Err(Signature("symbol".into(), other.type_of())),
-//                 }?;
-//                 let expr = list.iter().nth(2).ok_or_else(|| Arity(2, 1))?;
-//                 let res = expr.eval(env);
-
-//                 if let Exception(ex) = res {
-//                     return Err(ex);
-//                 }
-
-//                 let mut ident_ref = env
-//                     .get_mut(ident_str)
-//                     .ok_or_else(|| Undefined(ident_str.clone()))?;
-//                 *ident_ref = res;
-
-//                 Ok(Expression::default())
-//             }
-//             n => Err(Arity(2, n)),
-//         }
-//     }
-
-//     set_helper(list, env).unwrap_or_else(|ex| Exception(ex))
-// }
-
 /// `(begin <expr> ...)`
 ///
 /// Evalulates all provided expressions. The result of the last expression is
@@ -618,7 +585,7 @@ macro_rules! check_arity {
 }
 
 fn hygienic_macro_ident(s: impl AsRef<str>) -> String {
-    format!(".{}", s.as_ref())
+    format!("({}", s.as_ref())
 }
 
 fn transform_idents_to_hygienic(
@@ -712,30 +679,6 @@ pub fn define_rlisp_macro(
                             // Check arity
                             check_arity!(num_params, list.len() - 1);
 
-                            // Store values previously stored at parameter names
-
-                            // for param_name in param_names.iter() {
-                            //     prev_buf.push(ctx.get(param_name));
-                            // }
-
-                            // Insert values arguments and store previously defined values
-                            // let mut prev_buf = Vec::with_capacity(num_params);
-                            // let args = list.tail().unwrap_or_default();
-                            // for (param_name, arg) in
-                            //     param_names.iter().zip(args)
-                            // {
-                            //     let prev_value = {
-                            //         let prev_value_ref = ctx.get(param_name);
-                            //         prev_value_ref.cloned()
-                            //     };
-                            //     println!(
-                            //         "previous value of {} = {:?}",
-                            //         param_name, prev_value
-                            //     );
-                            //     prev_buf.push(prev_value);
-                            //     ctx.insert(param_name, arg.as_ref().clone());
-                            // }
-
                             let args = list.tail().unwrap_or_default();
                             for (param_name, arg) in
                                 hygienic_params.iter().zip(args)
@@ -748,16 +691,6 @@ pub fn define_rlisp_macro(
                             for param_name in hygienic_params.iter() {
                                 ctx.remove(param_name);
                             }
-
-                            // for (param_name, prev_val) in
-                            //     param_names.iter().zip(prev_buf.into_iter())
-                            // {
-                            //     if let Some(prev) = prev_val {
-                            //         ctx.insert(param_name, prev);
-                            //     } else {
-                            //         ctx.remove(param_name);
-                            //     }
-                            // }
 
                             res
                         };

@@ -405,7 +405,7 @@ where
         }
 
         match buf.len() {
-            0 => Some(Cons(ConsList::new())),
+            0 => Some(Expression::default()),
             1 => Some((&buf[0]).clone()),
             _ => Some(Cons(
                 ConsList::from(buf).cons(op.expect("this should not fail")),
@@ -498,7 +498,7 @@ where
                 match s.as_str() {
                     "#t" | "true" => Bool(true),
                     "#f" | "false" => Bool(false),
-                    "nil" | "empty" => nil(),
+                    "nil" | "empty" => quote(nil()),
                     "quote" => Callable(Quote),
                     "quasiquote" => Callable(Quasiquote),
                     "unquote" => Callable(Unquote),
@@ -523,7 +523,7 @@ where
 /// Determines whether or not the specified character is a valid identifier.
 fn is_valid_ident(ch: char) -> bool {
     match ch {
-        '(' | ')' | '[' | ']' | '{' | '}' | '\'' | '"' | '`' | ',' | '.' => false,
+        '(' | ')' | '[' | ']' | '{' | '}' | '\'' | '"' | '`' | ',' => false,
         _ => true,
     }
 }

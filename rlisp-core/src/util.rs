@@ -23,9 +23,7 @@ pub type Str = Rc<str>;
 
 /// Produces an expression equal to `nil`.
 pub fn nil() -> Expression {
-    let list = ConsList::singleton(Callable(Quote))
-        .append(ConsList::singleton(Cons(ConsList::new())));
-    Cons(list)
+    Cons(ConsList::new())
 }
 
 /// Wraps the specified list of expressions in a `begin` statement. For

@@ -54,12 +54,6 @@
 ;     (cond [(empty? xs) xs]
 ;           [else (foldr f (f (head xs) acc) (tail xs))])))))
 
-
-; (define-syntax reload
-;     (syntax-rules []
-;         (reload)
-;         (import "stdlib.rlisp")))
-
 ; print :: a -> nil
 (define print display)
 
@@ -97,3 +91,6 @@
 
 (define (greet name)
     (println #"Bonjour, #{name}!"))
+
+(define-macro (reload)
+    (import (string-concat RLISP_HOME "/loader.rl")))
