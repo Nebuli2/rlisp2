@@ -1,10 +1,14 @@
 (define RLISP_HOME (env-var "RLISP_HOME"))
 
-(import (format "#{RLISP_HOME}/stdio.rl"))
-(import (format "#{RLISP_HOME}/stdlib.rl"))
-(import (format "#{RLISP_HOME}/repl.rl"))
-(import (format "#{RLISP_HOME}/error.rl"))
-(import (format "#{RLISP_HOME}/map.rl"))
+; Imports the file prefixed with RLISP_HOME
+(define-macro (import-lib name)
+    `(import ,(format "#{RLISP_HOME}/#{name}")))
+
+(import-lib "stdio.rl")
+(import-lib "stdlib.rl")
+(import-lib "repl.rl")
+(import-lib "error.rl")
+(import-lib "map.rl")
 
 ; Define interactive entry point
 (define interactive-start start-repl)

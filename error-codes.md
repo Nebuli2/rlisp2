@@ -35,3 +35,5 @@
 - `033`: Unquote expression must be contained in a quasiquote
 - `034`: Unknown color
 - `035`: Unknown style
+- `036`: Unknown environment variable
+- `037`: Macro definition must include a name

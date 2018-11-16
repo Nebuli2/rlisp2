@@ -605,3 +605,128 @@ pub fn begin(list: ConsList<Expression>, env: &mut Context) -> Expression {
     }
     last_expr
 }
+
+macro_rules! check_arity {
+    ($expected:expr, $found:expr) => {{
+        use $crate::exception::Exception::Arity;
+        use $crate::expression::Expression::Exception;
+
+        if $found != $expected {
+            return Exception(Arity($expected, $found));
+        }
+    }};
+}
+
+/// `(define-macro (name args ...) expr)`
+/// # Example
+/// ```
+/// (define-macro (import-lib path)
+///     `(import ,(format "#{(env-var "RLISP_HOME")}/#{path})))
+/// ```
+pub fn define_rlisp_macro(
+    list: ConsList<Expression>,
+    ctx: &mut Context,
+) -> Expression {
+    // Check arity
+    check_arity!(2, list.len() - 1);
+
+    // We have already checked the arity, meaning these are safe to unwrap
+    let definition = list.iter().nth(1).unwrap().as_ref().clone();
+
+    // Evaluate the body
+    let body = list.iter().nth(2).unwrap().as_ref().clone();
+
+    match definition {
+        Cons(params) => {
+            if params.len() < 1 {
+                return Exception(Syntax(
+                    37,
+                    "macro definition must include a name".into(),
+                ));
+            }
+            // let mut previously_defined = Vec::with_capacity(params.len() - 1);
+            let name = params.iter().next().unwrap().as_ref().clone();
+            match name {
+                Symbol(name) => {
+                    let params = params.tail().unwrap_or_default();
+                    let num_params = params.len();
+
+                    // Check params
+                    let mut param_names = Vec::with_capacity(num_params);
+                    for param in params.iter() {
+                        match param.as_ref() {
+                            Symbol(param_name) => {
+                                param_names.push(param_name.clone());
+                            }
+                            _ => {
+                                return Exception(Syntax(
+                                    39,
+                                    "macro parameter must be a symbol".into(),
+                                ))
+                            }
+                        }
+                    }
+
+                    let defined_macro =
+                        move |list: ConsList<Expression>, ctx: &mut Context| {
+                            // Check arity
+                            check_arity!(num_params, list.len() - 1);
+
+                            // Store values previously stored at parameter names
+
+                            // for param_name in param_names.iter() {
+                            //     prev_buf.push(ctx.get(param_name));
+                            // }
+
+                            // Insert values arguments and store previously defined values
+                            let mut prev_buf = Vec::with_capacity(num_params);
+                            let args = list.tail().unwrap_or_default();
+                            for (param_name, arg) in
+                                param_names.iter().zip(args)
+                            {
+                                let prev_value = {
+                                    let prev_value_ref = ctx.get(param_name);
+                                    prev_value_ref.cloned()
+                                };
+                                prev_buf.push(prev_value);
+                                ctx.insert(param_name, arg.as_ref().clone());
+                            }
+
+                            let res = body.eval(ctx).eval(ctx);
+
+                            for (param_name, prev_val) in
+                                param_names.iter().zip(prev_buf.into_iter())
+                            {
+                                if let Some(prev) = prev_val {
+                                    ctx.insert(param_name, prev);
+                                } else {
+                                    ctx.remove(param_name);
+                                }
+                            }
+
+                            res
+                        };
+
+                    let macro_expr = Callable(Macro(Rc::new(defined_macro)));
+                    ctx.insert(name, macro_expr);
+                }
+                _ => {
+                    return Exception(Syntax(
+                        38,
+                        "macro name must be a symbol".into(),
+                    ))
+                }
+            }
+
+            // for
+        }
+        other => {
+            return Exception(Signature(
+                "(cons, any)".into(),
+                format!("({}, {}", other.type_of(), body.type_of()).into(),
+            ));
+        }
+    }
+
+    Expression::default()
+}

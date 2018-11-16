@@ -63,6 +63,7 @@ fn load_macros(ctx: &mut Context) {
     define_macros! {
         context: ctx,
         "define" => define,
+        "define-macro" => define_rlisp_macro,
         "lambda" => lambda,
         "λ" => lambda,
         "env" => env,

@@ -73,6 +73,13 @@ impl Context {
             .map(|scope| scope.bindings.insert(ident, value));
     }
 
+    pub fn remove(&mut self, ident: impl AsRef<str>) {
+        let ident = ident.as_ref();
+        self.scopes
+            .last_mut()
+            .map(|scope| scope.bindings.remove(ident));
+    }
+
     /// Defines a struct with the specified name in the `Context`. If the
     /// scopes of the `Context` are empty, `None` is returned. Otherwise, a
     /// `StructId` is returned.
