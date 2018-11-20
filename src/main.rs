@@ -8,6 +8,8 @@ mod app;
 mod repl;
 
 fn main() {
+    let size = std::mem::size_of::<rlisp_core::expression::Callable>();
+    println!("size = {} bytes", size);
     app::run();
     // let mut buf = String::new();
     // let stdin = std::io::stdin();

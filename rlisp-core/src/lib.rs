@@ -43,6 +43,8 @@ pub mod parser;
 pub mod math;
 pub mod quat;
 
+pub mod pattern;
+
 /// The prelude module re-exports commonly used portions of the `rlisp_core`
 /// crate for easier access.
 pub mod prelude {

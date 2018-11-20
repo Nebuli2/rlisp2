@@ -8,8 +8,9 @@ use crate::{
     expression::{
         Callable::*,
         Expression::{self, *},
-        StructData, ValidIdentifier,
+        LambdaData, StructData, ValidIdentifier,
     },
+    pattern::{pattern_match, replace_symbols},
     util::{nil, wrap_begin, Str},
 };
 use im::ConsList;
@@ -41,9 +42,13 @@ fn create_lambda(
             } else {
                 Some(capture)
             };
-            Callable(Lambda(params, Rc::new(body.clone()), capture))
+            Callable(Lambda(Rc::new(LambdaData {
+                params,
+                body: Rc::new(body.clone()),
+                capture: capture.map(Rc::new),
+            })))
         }).unwrap_or_else(|_| {
-            Exception(Syntax(17, "(lambda [args...] body)".into()))
+            Exception(Rc::new(Syntax(17, "(lambda [args...] body)".into())))
         })
 }
 
@@ -55,11 +60,13 @@ pub fn lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     let body = list.tail().and_then(|list| list.tail());
 
     match (params, body) {
-        (Some(params), Some(body)) => match (*params).clone() {
+        (Some(params), Some(body)) => match params.as_ref() {
             Cons(list) => create_lambda(list.clone(), body, ctx),
-            _ => Exception(Syntax(17, "(lambda [args...] body)".into())),
+            _ => {
+                Exception(Rc::new(Syntax(17, "(lambda [args...] body)".into())))
+            }
         },
-        _ => Exception(Syntax(17, "(lambda [args...] body)".into())),
+        _ => Exception(Rc::new(Syntax(17, "(lambda [args...] body)".into()))),
     }
 }
 
@@ -85,7 +92,7 @@ pub fn define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                                 .map(|expr| expr.eval(ctx))
                                 .unwrap();
                             if let Exception(ex) = value {
-                                Err(ex)
+                                Err(ex.as_ref().clone())
                             } else {
                                 ctx.insert(ident, value);
                                 Ok(Expression::default())
@@ -164,7 +171,7 @@ pub fn define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                 26,
                 "define must bind either a function or a symbol".into(),
             )),
-        }).unwrap_or_else(|ex| Exception(ex))
+        }).unwrap_or_else(|ex| Exception(Rc::new(ex)))
 }
 
 /// `(env <ident>)`
@@ -179,8 +186,8 @@ pub fn env(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         Symbol(ident) => {
             ctx.get(ident).map(|expr| expr.clone()).unwrap_or_else(nil)
         }
-        _ => Exception(Signature("symbol".into(), arg.type_of())),
-    }).unwrap_or_else(|| Exception(Arity(1, 99)))
+        _ => Exception(Rc::new(Signature("symbol".into(), arg.type_of()))),
+    }).unwrap_or_else(|| Exception(Rc::new(Arity(1, 99))))
 }
 
 /// `(if <cond> <then> <else>)`
@@ -220,11 +227,11 @@ pub fn if_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                 else_branch.eval(ctx)
             }
         }
-        (Some(a), Some(b), Some(c)) => Exception(Signature(
+        (Some(a), Some(b), Some(c)) => Exception(Rc::new(Signature(
             "bool, any, any".into(),
             format!("{}, {}, {}", a.type_of(), b.type_of(), c.type_of()).into(),
-        )),
-        _ => Exception(Arity(3, list.len())),
+        ))),
+        _ => Exception(Rc::new(Arity(3, list.len()))),
     }
 }
 
@@ -265,27 +272,27 @@ pub fn cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                         }
                         _ => {
                             ctx.descend_scope();
-                            return Exception(Syntax(
+                            return Exception(Rc::new(Syntax(
                                 18,
                                 "condition must be a boolean value".into(),
-                            ));
+                            )));
                         }
                     },
                     _ => {
                         ctx.descend_scope();
-                        return Exception(Syntax(
+                        return Exception(Rc::new(Syntax(
                             19,
                             "condition case must contain 2 elements".into(),
-                        ));
+                        )));
                     }
                 }
             }
             _ => {
                 ctx.descend_scope();
-                return Exception(Syntax(
+                return Exception(Rc::new(Syntax(
                     20,
                     "condition case must be a list".into(),
-                ));
+                )));
             }
         }
     }
@@ -365,7 +372,7 @@ pub fn let_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
             _ => wrap_begin(body),
         }).map(|body| body.eval(ctx));
     ctx.descend_scope();
-    body.unwrap_or_else(Exception)
+    body.unwrap_or_else(|ex| Exception(Rc::new(ex)))
 }
 
 /// `(try <expr> <handler>)`
@@ -395,13 +402,13 @@ pub fn try_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                     expr
                 }
             } else {
-                Exception(Custom(
+                Exception(Rc::new(Custom(
                     2,
                     format!("not a callable value: `{}`", handler).into(),
-                ))
+                )))
             }
         }
-        n => Exception(Arity(2, n)),
+        n => Exception(Rc::new(Arity(2, n))),
     }
 }
 
@@ -435,14 +442,20 @@ pub fn define_struct(
             if let Symbol(s) = name.as_ref() {
                 name_str = s;
             } else {
-                return Exception(Signature("symbol".into(), name.type_of()));
+                return Exception(Rc::new(Signature(
+                    "symbol".into(),
+                    name.type_of(),
+                )));
             }
 
             let id;
             if let Some(id_inner) = env.define_struct(name_str) {
                 id = id_inner;
             } else {
-                return Exception(Custom(31, "could not define struct".into()));
+                return Exception(Rc::new(Custom(
+                    31,
+                    "could not define struct".into(),
+                )));
             }
 
             let members = list.iter().nth(2).unwrap();
@@ -451,7 +464,10 @@ pub fn define_struct(
             if let Cons(list) = members.as_ref() {
                 members_symbols = list;
             } else {
-                return Exception(Signature("cons".into(), name.type_of()));
+                return Exception(Rc::new(Signature(
+                    "cons".into(),
+                    name.type_of(),
+                )));
             }
 
             let mut member_names: Vec<Str> =
@@ -460,10 +476,10 @@ pub fn define_struct(
                 match ex.as_ref() {
                     Symbol(member) => member_names.push(member.clone()),
                     other => {
-                        return Exception(Signature(
+                        return Exception(Rc::new(Signature(
                             "symbol".into(),
                             other.type_of(),
-                        ))
+                        )))
                     }
                 }
             }
@@ -476,16 +492,16 @@ pub fn define_struct(
                         let StructData { data, .. } = data.as_ref();
                         data.get(i).map(|expr| expr.clone()).unwrap_or_else(
                             || {
-                                Exception(Custom(
+                                Exception(Rc::new(Custom(
                                     29,
                                     "struct does not contain specified field"
                                         .into(),
-                                ))
+                                )))
                             },
                         )
                     }
                     // [x] => Exception(Signature(name_symbol.clone(), x.type_of())),
-                    xs => Exception(Arity(1, xs.len())),
+                    xs => Exception(Rc::new(Arity(1, xs.len()))),
                 };
                 let accessor = format!("{}-{}", name, member);
                 env.insert(accessor.clone(), Callable(Intrinsic(Rc::new(get))));
@@ -546,14 +562,14 @@ pub fn define_struct(
                             _ => unreachable!(),
                         }
                     }
-                    n => Exception(Arity(member_count, n)),
+                    n => Exception(Rc::new(Arity(member_count, n))),
                 }
             };
             let constructor = format!("make-{}", name_str);
             env.insert(constructor, Callable(Macro(Rc::new(make))));
             Expression::default()
         }
-        n => Exception(Arity(2, n)),
+        n => Exception(Rc::new(Arity(2, n))),
     }
 }
 
@@ -579,142 +595,74 @@ macro_rules! check_arity {
         use $crate::expression::Expression::Exception;
 
         if $found != $expected {
-            return Exception(Arity($expected, $found));
+            return Exception(Rc::new(Arity($expected, $found)));
         }
     }};
 }
 
-fn hygienic_macro_ident(s: impl AsRef<str>) -> String {
-    format!("({}", s.as_ref())
+trait GetUnwrap {
+    type Item;
+
+    fn get_unwrap(&self, n: usize) -> Self::Item;
 }
 
-fn transform_idents_to_hygienic(
-    param_names: &[Str],
-    expr: Expression,
-) -> Expression {
-    match expr {
-        Symbol(ref ident) if param_names.contains(ident) => {
-            unquote(Symbol(hygienic_macro_ident(ident).into()))
-        }
-        Cons(list) => Cons(
-            list.iter()
-                .map(|expr| expr.as_ref().clone())
-                .map(|expr| transform_idents_to_hygienic(param_names, expr))
-                .collect(),
-        ),
-        other => other,
+impl<T> GetUnwrap for ConsList<T>
+where
+    T: Clone,
+{
+    type Item = T;
+
+    fn get_unwrap(&self, n: usize) -> T {
+        self.iter().nth(n).unwrap().as_ref().clone()
     }
 }
 
-fn quasiquote(expr: Expression) -> Expression {
-    let list = ConsList::new().cons(expr).cons(Callable(Quasiquote));
-    Cons(list)
-}
-
-fn unquote(expr: Expression) -> Expression {
-    let list = ConsList::new().cons(expr).cons(Callable(Unquote));
-    Cons(list)
-}
-
-/// `(define-macro (name args ...) expr)`
-/// # Example
-/// ```
-/// (define-macro (import-lib path)
-///     `(import ,(format "#{(env-var "RLISP_HOME")}/#{path})))
-/// ```
-pub fn define_rlisp_macro(
+pub fn define_syntax_rule(
     list: ConsList<Expression>,
     ctx: &mut Context,
 ) -> Expression {
-    // Check arity
     check_arity!(2, list.len() - 1);
 
-    // We have already checked the arity, meaning these are safe to unwrap
-    let definition = list.iter().nth(1).unwrap().as_ref().clone();
+    let pattern = list.get_unwrap(1);
+    let body = list.get_unwrap(2);
 
-    // Evaluate the body
-    let body = list.iter().nth(2).unwrap().as_ref().clone();
-
-    match definition {
-        Cons(params) => {
-            if params.len() < 1 {
-                return Exception(Syntax(
-                    37,
-                    "macro definition must include a name".into(),
-                ));
-            }
-            // let mut previously_defined = Vec::with_capacity(params.len() - 1);
-            let name = params.iter().next().unwrap().as_ref().clone();
-            match name {
-                Symbol(name) => {
-                    let params = params.tail().unwrap_or_default();
-                    let num_params = params.len();
-
-                    // Check params
-                    let mut param_names = Vec::with_capacity(num_params);
-                    for param in params.iter() {
-                        match param.as_ref() {
-                            Symbol(param_name) => {
-                                param_names.push(param_name.clone());
-                            }
-                            _ => {
-                                return Exception(Syntax(
-                                    39,
-                                    "macro parameter must be a symbol".into(),
-                                ))
-                            }
-                        }
-                    }
-
-                    // Transform body to use hygienic identifiers
-                    let transformed_body = quasiquote(
-                        transform_idents_to_hygienic(&param_names[..], body),
-                    );
-
-                    let hygienic_params: Vec<_> =
-                        param_names.iter().map(hygienic_macro_ident).collect();
-
-                    let defined_macro =
-                        move |list: ConsList<Expression>, ctx: &mut Context| {
-                            // Check arity
-                            check_arity!(num_params, list.len() - 1);
-
-                            let args = list.tail().unwrap_or_default();
-                            for (param_name, arg) in
-                                hygienic_params.iter().zip(args)
-                            {
-                                ctx.insert(param_name, arg.as_ref().clone());
-                            }
-
-                            let res = transformed_body.eval(ctx).eval(ctx);
-
-                            for param_name in hygienic_params.iter() {
-                                ctx.remove(param_name);
-                            }
-
-                            res
-                        };
-
-                    let macro_expr = Callable(Macro(Rc::new(defined_macro)));
-                    ctx.insert(name, macro_expr);
-                }
+    match pattern {
+        Cons(ref pat) if pat.len() < 1 => {
+            return Exception(Rc::new(Syntax(
+                37,
+                "macro definition must include a name".into(),
+            )))
+        }
+        Cons(pat) => {
+            let name = match pat.iter().nth(0).unwrap().as_ref().clone() {
+                Symbol(name) => name,
                 _ => {
-                    return Exception(Syntax(
+                    return Exception(Rc::new(Custom(
                         38,
                         "macro name must be a symbol".into(),
-                    ))
+                    )))
                 }
-            }
+            };
 
-            // for
+            let syntax = [name.clone()];
+            let pattern = Cons(pat.clone());
+
+            let defined_macro =
+                move |list: ConsList<Expression>, ctx: &mut Context| {
+                    match pattern_match(&syntax, &pattern, &Cons(list)) {
+                        Ok(matches) => {
+                            let replaced = replace_symbols(&body, &matches);
+                            replaced.eval(ctx)
+                        }
+                        Err(ex) => Exception(Rc::new(ex)),
+                    }
+                };
+            let wrapped_macro = Callable(Macro(Rc::new(defined_macro)));
+            ctx.insert(name, wrapped_macro);
+            Expression::default()
         }
-        other => {
-            return Exception(Signature(
-                "(cons, any)".into(),
-                format!("({}, {}", other.type_of(), body.type_of()).into(),
-            ));
+        _ => {
+            Exception(Rc::new(Syntax(40, "syntax rule must be a list".into())))
         }
     }
-
-    Expression::default()
 }

@@ -1,7 +1,8 @@
-(define-macro (swap! a b)
-    (let ([tmp a])
-        (set! a b)
-        (set! b tmp)))
+; Swaps the two specified variables.
+(define-macro-rule (swap! a b)
+    (let ([tmp b])
+        (set! b a)
+        (set! a tmp)))
 
-(define-macro (set! var val)
+(define-macro-rule (set! var val)
     (set-internal! 'var val))

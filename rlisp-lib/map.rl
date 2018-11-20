@@ -34,8 +34,3 @@
 (define (array-of vals)
     (array-of-internal vals 0))
 
-(define test-map 
-    (map-of '([0 10]
-              [1 20]
-              [2 30])))
-

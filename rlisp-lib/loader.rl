@@ -1,10 +1,10 @@
 (define RLISP_HOME (env-var "RLISP_HOME"))
 
 ; Imports the file prefixed with RLISP_HOME
-(define-macro (import-lib name)
+(define-macro-rule (import-lib name)
     (import (string-concat RLISP_HOME "/" name)))
 
-(define-macro (load)
+(define-macro-rule (load)
     (begin
         (import-lib "stdio.rl")
         (import-lib "stdlib.rl")

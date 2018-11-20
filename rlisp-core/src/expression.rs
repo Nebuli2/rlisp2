@@ -26,6 +26,13 @@ pub struct StructData {
     pub data: Vec<Expression>,
 }
 
+#[derive(PartialEq)]
+pub struct LambdaData {
+    pub params: ConsList<Str>,
+    pub body: Rc<Expression>,
+    pub capture: Option<Rc<Capture>>,
+}
+
 /// Any value that may be called as a function.
 #[derive(Clone)]
 pub enum Callable {
@@ -48,7 +55,7 @@ pub enum Callable {
     /// expression, and a map of captured expressions. All values referenced
     /// in the body of the `Lambda` are captured by value at the site of its
     /// creation.
-    Lambda(ConsList<Str>, Rc<Expression>, Option<Capture>),
+    Lambda(Rc<LambdaData>),
 
     /// An intrinsic function, taking a slice of expressions and
     /// returning another expression.
@@ -68,7 +75,7 @@ pub enum Expression {
     /// point precision, adhering to the IEEE 754 standard.
     Num(f64),
 
-    Quaternion(Quat),
+    Quaternion(Rc<Quat>),
 
     /// An immutable string expression.
     Str(Str),
@@ -84,7 +91,7 @@ pub enum Expression {
     Callable(Callable),
 
     /// An exception.
-    Exception(exception::Exception),
+    Exception(Rc<exception::Exception>),
 
     /// A custom struct.
     Struct(Rc<StructData>),
@@ -200,7 +207,7 @@ impl Expression {
                         let expr = list.iter().nth(1).unwrap();
                         expr.as_ref().clone()
                     }
-                    len => Exception(Arity(1, len)),
+                    len => Exception(Rc::new(Arity(1, len))),
                 },
                 Quasiquote => match list.len() - 1 {
                     1 => {
@@ -208,13 +215,13 @@ impl Expression {
                         let expr = list.iter().nth(1).unwrap();
                         expr.eval_quasiquote(ctx)
                     }
-                    len => Exception(Arity(1, len)),
+                    len => Exception(Rc::new(Arity(1, len))),
                 },
-                Unquote => Exception(Syntax(
+                Unquote => Exception(Rc::new(Syntax(
                     33,
                     "unquote expression must be contained in a quasiquote"
                         .into(),
-                )),
+                ))),
 
                 Macro(f) => f(list.clone(), ctx),
                 Intrinsic(f) => {
@@ -229,7 +236,12 @@ impl Expression {
                     args.map(|args| f(&args, ctx))
                         .unwrap_or_else(|e| Exception(e))
                 }
-                Lambda(params, body, capture) => {
+                Lambda(data) => {
+                    let LambdaData {
+                        params,
+                        body,
+                        capture,
+                    } = data.as_ref();
                     let args: Result<ConsList<_>, _> = list
                         .tail()
                         .unwrap_or_default()
@@ -244,15 +256,15 @@ impl Expression {
                             &body,
                             args,
                             ctx,
-                            capture.as_ref(),
+                            capture.as_ref().map(|cap| cap.as_ref()),
                         )
                     }).unwrap_or_else(|e| e)
                 }
             },
-            _ => Exception(Custom(
+            _ => Exception(Rc::new(Custom(
                 3,
                 format!("not a callable value: `{}`", self).into(),
-            )),
+            ))),
         }
     }
 
@@ -260,10 +272,11 @@ impl Expression {
     pub fn eval(&self, ctx: &mut Context) -> Expression {
         match self {
             // Look up variable
-            Symbol(ident) => ctx
-                .get(ident)
-                .map(|expr| expr.clone())
-                .unwrap_or_else(|| Exception(Undefined(ident.clone()))),
+            Symbol(ident) => {
+                ctx.get(ident).map(|expr| expr.clone()).unwrap_or_else(|| {
+                    Exception(Rc::new(Undefined(ident.clone())))
+                })
+            }
 
             // Evaluate function
             Cons(list) => {
@@ -271,11 +284,10 @@ impl Expression {
                     let func = func.eval(ctx);
                     func.call(list, ctx)
                 } else {
-                    Exception(Custom(
+                    Exception(Rc::new(Custom(
                         3,
-                        format!("{:?} has no function to call", list.clone())
-                            .into(),
-                    ))
+                        "no function specified".into(),
+                    )))
                 }
             }
 
@@ -315,13 +327,7 @@ fn eval_lambda(
             ctx.descend_scope();
             res
         }
-        (expected, found) => {
-            println!(
-                "{:?}",
-                Callable(Lambda(params.clone(), Rc::new(body.clone()), None))
-            );
-            Exception(Arity(expected, found))
-        }
+        (expected, found) => Exception(Rc::new(Arity(expected, found))),
     }
 }
 
@@ -408,16 +414,13 @@ impl PartialEq for Expression {
         match (self, other) {
             (Num(a), Num(b)) => a == b,
             (Quaternion(a), Quaternion(b)) => a == b,
-            (&Num(a), &Quaternion(b)) => Quat::from(a) == b,
-            (&Quaternion(a), &Num(b)) => a == Quat::from(b),
+            (&Num(a), &Quaternion(ref b)) => &Quat::from(a) == b.as_ref(),
+            (&Quaternion(ref a), &Num(b)) => a.as_ref() == &Quat::from(b),
             (Str(a), Str(b)) => a == b,
             (Bool(a), Bool(b)) => a == b,
             (Symbol(a), Symbol(b)) => a == b,
             (Callable(a), Callable(b)) => match (a, b) {
-                (
-                    Lambda(args_a, body_a, cap_a),
-                    Lambda(args_b, body_b, cap_b),
-                ) => args_a == args_b && body_a == body_b && cap_a == cap_b,
+                (Lambda(l1), Lambda(l2)) => l1 == l2,
                 _ => false,
             },
             (Cons(a), Cons(b)) => a == b,
@@ -513,7 +516,7 @@ impl<'a> Into<Expression> for &'a str {
 impl Into<Result<Expression, Exception>> for Expression {
     fn into(self) -> Result<Expression, Exception> {
         match self {
-            Exception(ex) => Err(ex),
+            Exception(ex) => Err(ex.as_ref().clone()),
             other => Ok(other),
         }
     }

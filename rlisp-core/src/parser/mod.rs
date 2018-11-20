@@ -16,41 +16,42 @@ use crate::{
 };
 use im::ConsList;
 use regex::Regex;
+use std::rc::Rc;
 
 pub mod preprocessor;
 
 const QUAT_REGEX_STR_ABCD: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)i([+-]?[0-9]+(\.[0-9]*)?)j([+-]?[0-9]+(\.[0-9]*)?)k";
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
 const QUAT_REGEX_STR_AB: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)i";
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)i";
 
 const QUAT_REGEX_STR_AC: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)j";
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)j";
 
 const QUAT_REGEX_STR_AD: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)k";
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)k";
 
 const QUAT_REGEX_STR_BC: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)i([+-]?[0-9]+(\.[0-9]*)?)j";
+    r"([+-]?[0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)j";
 
 const QUAT_REGEX_STR_BD: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)i([+-]?[0-9]+(\.[0-9]*)?)k";
+    r"([+-]?[0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)k";
 
 const QUAT_REGEX_STR_CD: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)j([+-]?[0-9]+(\.[0-9]*)?)k";
+    r"([+-]?[0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
 const QUAT_REGEX_STR_ABC: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)i([+-]?[0-9]*(\.[0-9]*)?)j";
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)i([+-][0-9]*(\.[0-9]*)?)j";
 
 const QUAT_REGEX_STR_ABD: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)i([+-]?[0-9]*(\.[0-9]*)?)k";
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)i([+-][0-9]*(\.[0-9]*)?)k";
 
 const QUAT_REGEX_STR_ACD: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)([+-]?[0-9]+(\.[0-9]*)?)j([+-]?[0-9]+(\.[0-9]*)?)k";
+    r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
 const QUAT_REGEX_STR_BCD: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)i([+-]?[0-9]+(\.[0-9]*)?)j([+-]?[0-9]+(\.[0-9]*)?)k";
+    r"([+-]?[0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
 const QUAT_REGEX_STR_B: &str = 
     r"([+-]?[0-9]+(\.[0-9]*)?)i";
@@ -286,6 +287,13 @@ where
         ch
     }
 
+    fn peek_char(&mut self) -> Option<char> {
+        self.next_char().map(|ch| {
+            self.unread(ch);
+            ch
+        })
+    }
+
     /// "Unreads" the specified character. Returning it to the stack of unread
     /// characters.
     fn unread(&mut self, ch: char) {
@@ -320,15 +328,32 @@ where
             '(' => self.parse_cons(')'),
             '[' => self.parse_cons(']'),
             '#' => {
-                let ex = self.parse_expr()?;
-                let list = cons![Symbol("format".into()), ex];
-                Some(Cons(list))
+                if let Some('|') = self.peek_char() {
+                    self.next_char();
+
+                    // Begin block comment
+                    let completed = loop {
+                        if let Some(ch) = self.next_char() {
+                            if ch == '|' {
+                                if let Some('#') = self.next_char() {
+                                    break true;
+                                }
+                            }
+                        } else {
+                            break false;
+                        }
+                    };
+                    if !completed {
+                        return Some(Exception(Rc::new(Syntax(42, "unclosed block comment".into()))));
+                    }
+                }
+                self.parse_expr()
             }
             '"' => self.parse_str(),
-            ')' | ']' | '}' => Some(Exception(Syntax(
+            ')' | ']' | '}' => Some(Exception(Rc::new(Syntax(
                 5,
                 format!("unexpected list close").into(),
-            ))),
+            )))),
             ';' => {
                 self.read_to(|ch| ch == '\n');
                 self.parse_expr()
@@ -382,10 +407,10 @@ where
                                 } else {
                                     // Ensure that different operators are not used in infix lists
                                     if Some(expr) != op {
-                                        return Some(Exception(Syntax(
+                                        return Some(Exception(Rc::new(Syntax(
                                             6,
                                             "infix list operators must be equal".into(),
-                                        )));
+                                        ))));
                                     }
                                 }
                             } else {
@@ -394,10 +419,10 @@ where
                             is_op = !is_op;
                         }
                         None => {
-                            return Some(Exception(Syntax(
+                            return Some(Exception(Rc::new(Syntax(
                                 7,
                                 "unclosed infix list".into(),
-                            )))
+                            ))))
                         }
                     }
                 }
@@ -453,10 +478,10 @@ where
                         }
                         Some(expr) => list = list + ConsList::singleton(expr),
                         None => {
-                            return Some(Exception(Syntax(
+                            return Some(Exception(Rc::new(Syntax(
                                 6,
                                 "unclosed list".into(),
-                            )))
+                            ))))
                         }
                     }
                 }
@@ -465,7 +490,7 @@ where
         if closed {
             Some(Cons(list))
         } else {
-            Some(Exception(Syntax(6, "unclosed list".into())))
+            Some(Exception(Rc::new(Syntax(6, "unclosed list".into()))))
         }
     }
 
@@ -487,7 +512,7 @@ where
                 ch => buf.push(ch),
             }
         }
-        Some(Exception(Syntax(8, "unclosed string literal".into())))
+        Some(Exception(Rc::new(Syntax(8, "unclosed string literal".into()))))
     }
 
     /// Parses an atom, which is a boolean value, quote, quasiquote, unquote, a
@@ -505,7 +530,7 @@ where
                     _ => {
                         // Attempt to parse quaternion
                         if let Ok(q) = s.parse::<Quat>() {
-                            return Quaternion(q);
+                            return Quaternion(Rc::new(q));
                         }
 
                         // Attempt to parse number

@@ -10,7 +10,7 @@
 ; `warn: msg`
 (define (warn msg)
     (display-pretty 'yellow 'bold "warning")
-    (display-pretty 'none 'bold #": #{msg}")
+    (display-pretty 'none 'bold (format ": {msg}"))
     (newline))
 
 ; err :: error -> nil
@@ -19,8 +19,8 @@
 (define (err error)
     (let ([code (error-code error)]
           [description (error-description error)])
-        (display-pretty 'red 'bold #"error(#{code})")
-        (display-pretty 'none 'bold #": #{description}")
+        (display-pretty 'red 'bold (format "error(#{code})"))
+        (display-pretty 'none 'bold (format ": #{description}"))
         (newline)))
 
 ; flush-stdout :: -> nil
@@ -42,7 +42,7 @@
         (begin
             (define value (eval (parse (readline))))
             (if {value /= empty}
-                (printf "=> #{value}\n")
+                (printfln "#{value}")
                 nil)
             (set! _ value))
         err)
@@ -54,14 +54,19 @@
 
 ; help :: -> nil
 (define (help)
-    (println #"Welcome to Rlisp #{(version)}!")
+    (printfln "Welcome to Rlisp #{(version)}!")
     (println "To interact with the REPL, simply enter an expression after the prompt."))
 
 ; greet :: string -> nil
 (define (greet version)
-    (println #"Rlisp #{version}")
+    (printfln "Rlisp #{version}")
     (println "Type `(help)` for more information."))
 
 (define (start-repl)
     (greet (version))
     (repl))
+
+(define-macro-rule (next-month [day month])
+    (if {month = 2}
+        `(,(+ day 1) 1)
+        `(,day ,(+ month 1))))

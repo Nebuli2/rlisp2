@@ -6,6 +6,7 @@
 use crate::{
     context::Context,
     exception::Exception::{self, *},
+    expression::Callable::{self, *},
     expression::Expression::{self, *},
     parser::{preprocessor::*, Parser},
     quat::Quat,
@@ -17,6 +18,7 @@ use std::{
     fs::File,
     io::{self, prelude::*, stdin, stdout, BufReader},
     ops::{Add, Div, Mul, Rem, Sub},
+    rc::Rc,
 };
 use termcolor::Color;
 
@@ -24,8 +26,8 @@ use termcolor::Color;
 fn unary_fn(args: &[Expression], f: impl Fn(f64) -> f64) -> Expression {
     match args {
         [Num(x)] => Num(f(*x)),
-        [value] => Exception(Signature("num".into(), value.type_of())),
-        arr => Exception(Arity(1, arr.len())),
+        [value] => Exception(Rc::new(Signature("num".into(), value.type_of()))),
+        arr => Exception(Rc::new(Arity(1, arr.len()))),
     }
 }
 
@@ -34,11 +36,11 @@ fn unary_fn(args: &[Expression], f: impl Fn(f64) -> f64) -> Expression {
 fn binary_fn(args: &[Expression], f: impl Fn(f64, f64) -> f64) -> Expression {
     match args {
         [Num(x), Num(y)] => Num(f(*x, *y)),
-        [x, y] => Exception(Signature(
+        [x, y] => Exception(Rc::new(Signature(
             "num, num".into(),
             format!("{}, {}", x.type_of(), y.type_of()).into(),
-        )),
-        arr => Exception(Arity(2, arr.len())),
+        ))),
+        arr => Exception(Rc::new(Arity(2, arr.len()))),
     }
 }
 
@@ -55,7 +57,9 @@ pub fn and(args: &[Expression], _: &mut Context) -> Expression {
         }).collect();
     bools
         .map(|bs| Bool(bs.iter().all(|&b| b)))
-        .unwrap_or_else(|ex| Exception(Signature("bool".into(), ex.type_of())))
+        .unwrap_or_else(|ex| {
+            Exception(Rc::new(Signature("bool".into(), ex.type_of())))
+        })
 }
 
 /// `or :: bool ... -> bool`
@@ -71,7 +75,9 @@ pub fn or(args: &[Expression], _: &mut Context) -> Expression {
         }).collect();
     bools
         .map(|bs| Bool(bs.iter().any(|&b| b)))
-        .unwrap_or_else(|ex| Exception(Signature("bool".into(), ex.type_of())))
+        .unwrap_or_else(|ex| {
+            Exception(Rc::new(Signature("bool".into(), ex.type_of())))
+        })
 }
 
 /// `not :: bool -> bool`
@@ -80,8 +86,8 @@ pub fn or(args: &[Expression], _: &mut Context) -> Expression {
 pub fn not(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Bool(b)] => Bool(!b),
-        [x] => Exception(Signature("bool".into(), x.type_of())),
-        xs => Exception(Arity(1, xs.len())),
+        [x] => Exception(Rc::new(Signature("bool".into(), x.type_of()))),
+        xs => Exception(Rc::new(Arity(1, xs.len()))),
     }
 }
 
@@ -103,14 +109,18 @@ pub fn add(args: &[Expression], _: &mut Context) -> Expression {
         let xs: Result<Vec<_>, &Expression> = args
             .iter()
             .map(|expr| match expr {
-                Num(n) => Ok(Quat::from(*n)),
-                Quaternion(n) => Ok(*n),
+                Num(n) => Ok(Rc::new(Quat::from(*n))),
+                Quaternion(n) => Ok(n.clone()),
                 other => Err(other),
             }).collect();
         if let Ok(xs) = xs {
-            Quaternion(xs.into_iter().fold(Quat::default(), Add::add))
+            Quaternion(Rc::new(
+                xs.into_iter()
+                    .map(|x| x.as_ref().clone())
+                    .fold(Quat::default(), Add::add),
+            ))
         } else {
-            Exception(Arity(0, 0))
+            Exception(Rc::new(Arity(0, 0)))
         }
     }
     // xs.map(|xs| xs.into_iter().fold(0.0, Add::add))
@@ -123,13 +133,15 @@ pub fn add(args: &[Expression], _: &mut Context) -> Expression {
 /// Produces the difference of the two specified values.
 pub fn sub(args: &[Expression], _: &mut Context) -> Expression {
     match args.len() {
-        0 => Exception(Custom(
+        0 => Exception(Rc::new(Custom(
             4,
             "arity mismatch: expected at least 1 argument, found 0".into(),
-        )),
+        ))),
         1 => match &args[0] {
             Num(n) => Num(-n),
-            other => Exception(Signature("num".into(), other.type_of())),
+            other => {
+                Exception(Rc::new(Signature("num".into(), other.type_of())))
+            }
         },
         _ => match &args[0] {
             Num(head) => {
@@ -147,7 +159,9 @@ pub fn sub(args: &[Expression], _: &mut Context) -> Expression {
 
                 Num(res)
             }
-            other => Exception(Signature("num".into(), other.type_of())),
+            other => {
+                Exception(Rc::new(Signature("num".into(), other.type_of())))
+            }
         },
     }
 }
@@ -170,14 +184,18 @@ pub fn mul(args: &[Expression], _: &mut Context) -> Expression {
         let xs: Result<Vec<_>, &Expression> = args
             .iter()
             .map(|expr| match expr {
-                Num(n) => Ok(Quat::from(*n)),
-                Quaternion(n) => Ok(*n),
+                Num(n) => Ok(Rc::new(Quat::from(*n))),
+                Quaternion(n) => Ok(n.clone()),
                 other => Err(other),
             }).collect();
         if let Ok(xs) = xs {
-            Quaternion(xs.into_iter().fold(Quat(1.0, 0.0, 0.0, 0.0), Mul::mul))
+            Quaternion(Rc::new(
+                xs.into_iter()
+                    .map(|x| x.as_ref().clone())
+                    .fold(Quat(1.0, 0.0, 0.0, 0.0), Mul::mul),
+            ))
         } else {
-            Exception(Arity(0, 0))
+            Exception(Rc::new(Arity(0, 0)))
         }
     }
 }
@@ -187,13 +205,15 @@ pub fn mul(args: &[Expression], _: &mut Context) -> Expression {
 /// Produces the quotient of the two specified values.
 pub fn div(args: &[Expression], _: &mut Context) -> Expression {
     match args.len() {
-        0 => Exception(Custom(
+        0 => Exception(Rc::new(Custom(
             4,
             "arity mismatch: expected at least 1 argument, found 0".into(),
-        )),
+        ))),
         1 => match &args[0] {
             Num(n) => Num(1.0 / n),
-            other => Exception(Signature("num".into(), other.type_of())),
+            other => {
+                Exception(Rc::new(Signature("num".into(), other.type_of())))
+            }
         },
         _ => match &args[0] {
             Num(head) => {
@@ -211,7 +231,9 @@ pub fn div(args: &[Expression], _: &mut Context) -> Expression {
 
                 Num(res)
             }
-            other => Exception(Signature("num".into(), other.type_of())),
+            other => {
+                Exception(Rc::new(Signature("num".into(), other.type_of())))
+            }
         },
     }
 }
@@ -232,9 +254,11 @@ pub fn arity_exception(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Num(expected), Num(found)] => {
             let (expected, found) = (*expected as usize, *found as usize);
-            Exception(Arity(expected, found))
+            Exception(Rc::new(Arity(expected, found)))
         }
-        _ => Exception(Signature("num, num".into(), "not that".into())),
+        _ => {
+            Exception(Rc::new(Signature("num, num".into(), "not that".into())))
+        }
     }
 }
 
@@ -246,11 +270,11 @@ pub fn arity_exception(args: &[Expression], _: &mut Context) -> Expression {
 pub fn cons(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [car, Cons(cdr)] => Cons(cdr.cons(car)),
-        [a, b] => Exception(Signature(
+        [a, b] => Exception(Rc::new(Signature(
             "any, cons".into(),
             format!("{}, {}", a.type_of(), b.type_of()).into(),
-        )),
-        xs => Exception(Arity(2, xs.len())),
+        ))),
+        xs => Exception(Rc::new(Arity(2, xs.len()))),
     }
 }
 
@@ -261,13 +285,15 @@ pub fn head(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Cons(list)] => {
             list.head().map(|head| (*head).clone()).unwrap_or_else(|| {
-                Exception(Custom(
+                Exception(Rc::new(Custom(
                     10,
                     "cannot get the tail of an empty list".into(),
-                ))
+                )))
             })
         }
-        _ => Exception(Signature("any, cons".into(), "not that".into())),
+        _ => {
+            Exception(Rc::new(Signature("any, cons".into(), "not that".into())))
+        }
     }
 }
 
@@ -278,13 +304,15 @@ pub fn tail(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Cons(list)] => {
             list.tail().map(|tail| Cons(tail)).unwrap_or_else(|| {
-                Exception(Custom(
+                Exception(Rc::new(Custom(
                     11,
                     "cannot get the tail of an empty list".into(),
-                ))
+                )))
             })
         }
-        _ => Exception(Signature("any, cons".into(), "not that".into())),
+        _ => {
+            Exception(Rc::new(Signature("any, cons".into(), "not that".into())))
+        }
     }
 }
 
@@ -299,15 +327,15 @@ pub fn exit(args: &[Expression], _: &mut Context) -> Expression {
             let code = *code as i32;
             exit(code);
         }
-        [x] => Exception(Signature("num".into(), x.type_of())),
+        [x] => Exception(Rc::new(Signature("num".into(), x.type_of()))),
         [] => exit(0),
-        args => Exception(Custom(
+        args => Exception(Rc::new(Custom(
             4,
             format!(
                 "arity mismatch: expected 0 or 1 arguments, found {}",
                 args.len()
             ).into(),
-        )),
+        ))),
     }
 }
 
@@ -317,7 +345,7 @@ pub fn exit(args: &[Expression], _: &mut Context) -> Expression {
 pub fn eq(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [a, b] => Bool(a == b),
-        args => Exception(Arity(2, args.len())),
+        args => Exception(Rc::new(Arity(2, args.len()))),
     }
 }
 
@@ -327,11 +355,11 @@ pub fn eq(args: &[Expression], _: &mut Context) -> Expression {
 pub fn lt(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Num(a), Num(b)] => Bool(a < b),
-        [a, b] => Exception(Signature(
-            "num, num".into(),
-            format!("{}, {}", a, b).into(),
-        )),
-        args => Exception(Arity(2, args.len())),
+        [a, b] => Exception(Rc::new(Signature(
+            "(num, num)".into(),
+            format!("({}, {})", a, b).into(),
+        ))),
+        args => Exception(Rc::new(Arity(2, args.len()))),
     }
 }
 
@@ -342,11 +370,11 @@ pub fn lt(args: &[Expression], _: &mut Context) -> Expression {
 pub fn lte(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Num(a), Num(b)] => Bool(a <= b),
-        [a, b] => Exception(Signature(
-            "num, num".into(),
-            format!("{}, {}", a, b).into(),
-        )),
-        args => Exception(Arity(2, args.len())),
+        [a, b] => Exception(Rc::new(Signature(
+            "(num, num)".into(),
+            format!("({}, {})", a, b).into(),
+        ))),
+        args => Exception(Rc::new(Arity(2, args.len()))),
     }
 }
 
@@ -356,11 +384,11 @@ pub fn lte(args: &[Expression], _: &mut Context) -> Expression {
 pub fn gt(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Num(a), Num(b)] => Bool(a > b),
-        [a, b] => Exception(Signature(
-            "num, num".into(),
-            format!("{}, {}", a, b).into(),
-        )),
-        args => Exception(Arity(2, args.len())),
+        [a, b] => Exception(Rc::new(Signature(
+            "(num, num)".into(),
+            format!("({}, {})", a, b).into(),
+        ))),
+        args => Exception(Rc::new(Arity(2, args.len()))),
     }
 }
 
@@ -371,11 +399,11 @@ pub fn gt(args: &[Expression], _: &mut Context) -> Expression {
 pub fn gte(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Num(a), Num(b)] => Bool(a >= b),
-        [a, b] => Exception(Signature(
-            "num, num".into(),
-            format!("{}, {}", a, b).into(),
-        )),
-        args => Exception(Arity(2, args.len())),
+        [a, b] => Exception(Rc::new(Signature(
+            "(num, num)".into(),
+            format!("({}, {})", a, b).into(),
+        ))),
+        args => Exception(Rc::new(Arity(2, args.len()))),
     }
 }
 
@@ -394,7 +422,7 @@ pub fn display(args: &[Expression], _: &mut Context) -> Expression {
         .flush()
         .map_err(|_| Custom(12, "could not flush stdout".into()))
         .map(|_| Expression::default())
-        .unwrap_or_else(|ex| Exception(ex))
+        .unwrap_or_else(|ex| Exception(Rc::new(ex)))
 }
 
 /// `display-debug :: a ... -> nil`
@@ -412,7 +440,7 @@ pub fn display_debug(args: &[Expression], _: &mut Context) -> Expression {
         .flush()
         .map_err(|_| Custom(12, "could not flush stdout".into()))
         .map(|_| Expression::default())
-        .unwrap_or_else(|ex| Exception(ex))
+        .unwrap_or_else(|ex| Exception(Rc::new(ex)))
 }
 
 /// `newline :: -> nil`
@@ -421,9 +449,9 @@ pub fn display_debug(args: &[Expression], _: &mut Context) -> Expression {
 pub fn newline(args: &[Expression], _: &mut Context) -> Expression {
     if args.len() == 0 {
         println!();
-        Cons(ConsList::new())
+        Expression::default()
     } else {
-        Exception(Arity(0, args.len()))
+        Exception(Rc::new(Arity(0, args.len())))
     }
 }
 
@@ -431,38 +459,21 @@ pub fn newline(args: &[Expression], _: &mut Context) -> Expression {
 ///
 /// Append all specified lists to the first specified list.
 pub fn append(args: &[Expression], _: &mut Context) -> Expression {
-    // Try lists
-    let lists: Option<Vec<_>> = args
+    let xs: Result<Vec<_>, &Expression> = args
         .iter()
-        .map(|arg| match arg {
-            Cons(list) => Some(list),
-            _ => None,
+        .map(|expr| match expr {
+            Cons(list) => Ok(list),
+            other => Err(other),
         }).collect();
 
-    if let Some(lists) = lists {
-        let total = lists
+    xs.map(|lists| {
+        lists
             .into_iter()
-            .fold(ConsList::new(), |acc, list| acc.append(list));
-        return Cons(total);
-    }
-
-    let strs: Option<Vec<_>> = args
-        .iter()
-        .map(|arg| match arg {
-            Str(s) => Some(s),
-            _ => None,
-        }).collect();
-
-    if let Some(strs) = strs {
-        let len: usize = strs.iter().map(|s| s.len()).sum();
-        let mut buf = String::with_capacity(len);
-        for s in strs {
-            buf.push_str(s);
-        }
-        return Str(buf.into());
-    }
-
-    Exception(Custom(13, "invalid types in append function".into()))
+            .fold(ConsList::new(), |acc, list| acc.append(list))
+    }).map(Cons)
+    .unwrap_or_else(|x| {
+        Exception(Rc::new(Signature("cons".into(), x.type_of())))
+    })
 }
 
 /// `empty? :: [a] -> bool`
@@ -471,8 +482,10 @@ pub fn append(args: &[Expression], _: &mut Context) -> Expression {
 pub fn empty(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Cons(list)] => Bool(list.is_empty()),
-        [a] => Exception(Signature("(list a)".into(), a.type_of().into())),
-        xs => Exception(Arity(1, xs.len())),
+        [a] => {
+            Exception(Rc::new(Signature("(list a)".into(), a.type_of().into())))
+        }
+        xs => Exception(Rc::new(Arity(1, xs.len()))),
     }
 }
 
@@ -482,7 +495,7 @@ pub fn empty(args: &[Expression], _: &mut Context) -> Expression {
 pub fn eval(args: &[Expression], ctx: &mut Context) -> Expression {
     match args {
         [ex] => ex.eval(ctx),
-        xs => Exception(Arity(1, xs.len())),
+        xs => Exception(Rc::new(Arity(1, xs.len()))),
     }
 }
 
@@ -505,13 +518,13 @@ pub fn readfile(args: &[Expression], _: &mut Context) -> Expression {
         [Str(s)] => read_file(s.as_ref())
             .map(|s| Str(s.into()))
             .unwrap_or_else(|_| {
-                Exception(Custom(
+                Exception(Rc::new(Custom(
                     14,
                     format!("could not read file {}", s).into(),
-                ))
+                )))
             }),
-        [x] => Exception(Signature("str".into(), x.type_of())),
-        xs => Exception(Arity(1, xs.len())),
+        [x] => Exception(Rc::new(Signature("str".into(), x.type_of()))),
+        xs => Exception(Rc::new(Arity(1, xs.len()))),
     }
 }
 
@@ -578,13 +591,13 @@ pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
         [Str(file_name)] => {
             let res = load_file(file_name);
             res.map(|ex| ex.eval(ctx)).unwrap_or_else(|_| {
-                Exception(Custom(
+                Exception(Rc::new(Custom(
                     14,
                     format!("could not read file {}", file_name).into(),
-                ))
+                )))
             })
         }
-        xs => Exception(Arity(1, xs.len())),
+        xs => Exception(Rc::new(Arity(1, xs.len()))),
     }
 }
 
@@ -599,10 +612,15 @@ pub fn readline(args: &[Expression], _: &mut Context) -> Expression {
                 .read_line(&mut buf)
                 .map_err(|_| Custom(15, "failed to read stdin".into()))
                 .map(|_| Str(buf.trim().into()))
-                .unwrap_or_else(|ex| Exception(ex))
+                .unwrap_or_else(|ex| Exception(Rc::new(ex)))
         }
-        n => Exception(Arity(0, n)),
+        n => Exception(Rc::new(Arity(0, n))),
     }
+}
+
+fn quote(expr: Expression) -> Expression {
+    let list = cons![Callable(Quote), expr];
+    Cons(list)
 }
 
 /// `parse :: string -> expr`
@@ -612,12 +630,12 @@ pub fn parse(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Str(s)] => {
             let mut parser = Parser::new(s.chars());
-            parser.parse_expr().unwrap_or_else(|| {
-                Exception(Custom(16, format!("could not parse {}", s).into()))
-            })
+            parser
+                .parse_expr()
+                .unwrap_or_else(|| quote(Expression::default()))
         }
-        [x] => Exception(Signature("string".into(), x.type_of())),
-        xs => Exception(Arity(1, xs.len())),
+        [x] => Exception(Rc::new(Signature("string".into(), x.type_of()))),
+        xs => Exception(Rc::new(Arity(1, xs.len()))),
     }
 }
 
@@ -627,7 +645,7 @@ pub fn parse(args: &[Expression], _: &mut Context) -> Expression {
 pub fn type_of(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [ex] => Symbol(ex.type_of()),
-        xs => Exception(Arity(1, xs.len())),
+        xs => Exception(Rc::new(Arity(1, xs.len()))),
     }
 }
 
@@ -719,10 +737,10 @@ fn format_str(sections: &[StrSection], env: &mut Context) -> Expression {
                         buf.push_str(&fmt);
                     }
                     None => {
-                        return Exception(Syntax(
+                        return Exception(Rc::new(Syntax(
                             31,
                             "format string must contain expression to interpolate".into(),
-                        ));
+                        )));
                     }
                 }
             }
@@ -743,10 +761,10 @@ pub fn format(args: &[Expression], env: &mut Context) -> Expression {
     match args {
         [Str(s)] => match split_str(s.as_ref()) {
             Ok(sections) => format_str(&sections, env),
-            Err(ex) => Exception(ex),
+            Err(ex) => Exception(Rc::new(ex)),
         },
-        [x] => Exception(Signature("string".into(), x.type_of())),
-        xs => Exception(Arity(1, xs.len())),
+        [x] => Exception(Rc::new(Signature("str".into(), x.type_of()))),
+        xs => Exception(Rc::new(Arity(1, xs.len()))),
     }
 }
 
@@ -761,11 +779,11 @@ pub fn set(args: &[Expression], env: &mut Context) -> Expression {
                 *reference = ex.clone();
                 Expression::default()
             } else {
-                Exception(Undefined(s.clone()))
+                Exception(Rc::new(Undefined(s.clone())))
             }
         }
-        [x, _] => Exception(Signature("symbol".into(), x.type_of())),
-        xs => Exception(Arity(2, xs.len())),
+        [x, _] => Exception(Rc::new(Signature("symbol".into(), x.type_of()))),
+        xs => Exception(Rc::new(Arity(2, xs.len()))),
     }
 }
 
@@ -776,9 +794,9 @@ pub fn sqrt(args: &[Expression], _: &mut Context) -> Expression {
     // unary_fn(args, f64::sqrt)
     match args {
         &[Num(n)] if n >= 0.0 => Num(f64::sqrt(n)),
-        &[Num(n)] => Quaternion(Quat(0.0, f64::sqrt(-n), 0.0, 0.0)),
-        [x] => Exception(Signature("num".into(), x.type_of())),
-        xs => Exception(Arity(1, xs.len())),
+        &[Num(n)] => Quaternion(Rc::new(Quat(0.0, f64::sqrt(-n), 0.0, 0.0))),
+        [x] => Exception(Rc::new(Signature("num".into(), x.type_of()))),
+        xs => Exception(Rc::new(Arity(1, xs.len()))),
     }
 }
 
@@ -886,48 +904,51 @@ pub fn display_pretty(args: &[Expression], _: &mut Context) -> Expression {
                     print_pretty(text, color, style);
                     Expression::default()
                 }
-                (Err(ex), _) => Exception(ex),
-                (_, Err(ex)) => Exception(ex),
+                (Err(ex), _) => Exception(Rc::new(ex)),
+                (_, Err(ex)) => Exception(Rc::new(ex)),
             }
         }
-        [x, y, z] => Exception(Signature(
+        [x, y, z] => Exception(Rc::new(Signature(
             "(symbol, symbol, any)".into(),
             format!("({}, {}, {})", x.type_of(), y.type_of(), z.type_of())
                 .into(),
-        )),
-        xs => Exception(Arity(2, xs.len())),
+        ))),
+        xs => Exception(Rc::new(Arity(2, xs.len()))),
     }
 }
 
 /// `quaternion :: num num num num -> quaternion`
 pub fn quaternion(args: &[Expression], _: &mut Context) -> Expression {
     match args {
-        [Num(a), Num(b), Num(c), Num(d)] => {
-            Quaternion(Quat(a.clone(), b.clone(), c.clone(), d.clone()))
-        }
-        [a, b, c, d] => Exception(Signature(
+        [Num(a), Num(b), Num(c), Num(d)] => Quaternion(Rc::new(Quat(
+            a.clone(),
+            b.clone(),
+            c.clone(),
+            d.clone(),
+        ))),
+        [a, b, c, d] => Exception(Rc::new(Signature(
             "(num, num, num, num)".into(),
             format!("({}, {}, {}, {})", a, b, c, d).into(),
-        )),
-        xs => Exception(Arity(4, xs.len())),
+        ))),
+        xs => Exception(Rc::new(Arity(4, xs.len()))),
     }
 }
 
 pub fn exp(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Num(a)] => Num(f64::exp(*a)),
-        [Quaternion(q)] => Quaternion(q.exp()),
-        [x] => Exception(Signature("num".into(), x.type_of())),
-        xs => Exception(Arity(1, xs.len())),
+        [Quaternion(q)] => Quaternion(Rc::new(q.exp())),
+        [x] => Exception(Rc::new(Signature("num".into(), x.type_of()))),
+        xs => Exception(Rc::new(Arity(1, xs.len()))),
     }
 }
 
 pub fn ln(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Num(a)] => Num(f64::ln(*a)),
-        [Quaternion(q)] => Quaternion(Quat::ln(q)),
-        [x] => Exception(Signature("num".into(), x.type_of())),
-        xs => Exception(Arity(1, xs.len())),
+        [Quaternion(q)] => Quaternion(Rc::new(Quat::ln(q))),
+        [x] => Exception(Rc::new(Signature("num".into(), x.type_of()))),
+        xs => Exception(Rc::new(Arity(1, xs.len()))),
     }
 }
 
@@ -938,14 +959,14 @@ pub fn env_var(args: &[Expression], _: &mut Context) -> Expression {
             if let Ok(var) = env::var(s.as_ref()) {
                 Str(var.into())
             } else {
-                Exception(Custom(
+                Exception(Rc::new(Custom(
                     36,
                     format!("undefined environment variable: \"{}\"", s).into(),
-                ))
+                )))
             }
         }
-        [x] => Exception(Signature("str".into(), x.type_of())),
-        xs => Exception(Arity(1, xs.len())),
+        [x] => Exception(Rc::new(Signature("str".into(), x.type_of()))),
+        xs => Exception(Rc::new(Arity(1, xs.len()))),
     }
 }
 

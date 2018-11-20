@@ -45,11 +45,6 @@
 (define (singleton x)
     (cons x nil))
 
-; append :: a (list a) -> (list a)
-(define (append x xs)
-    (cond [(empty? xs) (singleton x)]
-          [else (cons (head xs) (append x (tail xs)))]))
-
 ; (define foldr (lambda [f] (lambda [acc] (lambda [xs]
 ;     (cond [(empty? xs) xs]
 ;           [else (foldr f (f (head xs) acc) (tail xs))])))))
@@ -89,8 +84,62 @@
 (define {a /= b}
     (not {a = b}))
 
-(define (greet name)
-    (println #"Bonjour, #{name}!"))
-
-(define-macro (reload)
+(define-macro-rule (reload)
     (import (string-concat RLISP_HOME "/loader.rl")))
+
+; (define-macro def
+;     [(def (name args...) body...)
+;      (define name (lambda [...args] ...body))]
+;     [(def name body...)
+;      (define name (begin ...body))])
+
+; (define-macro map (syntax [:])
+;     [(map )])
+
+; tree = tree | nil
+(define-struct tree [value left right])
+
+(define (singleton-tree val)
+    (make-tree val nil nil))
+
+(define (tree-insert val tree)
+    (cond [{tree = nil} (singleton-tree val)]
+          [else (begin
+            (define head (tree-value tree))
+            (define left (tree-left tree))
+            (define right (tree-right tree))
+            (cond [{val < head} 
+                    (make-tree head (tree-insert val left) right)]
+                  [else
+                    (make-tree head left (tree-insert val right))]))]))
+
+(define (list->tree list)
+    (foldr tree-insert nil list))
+
+(define (tree->list tree)
+    (cond [{tree = nil} tree]
+          [else (let ([val (tree-value tree)]
+                      [left (tree-left tree)]
+                      [right (tree-right tree)])
+                    (append (tree->list left) (singleton val) (tree->list right)))]))
+
+(define (tree-sum tree)
+    (cond [{tree = nil} 0]
+          [else (begin
+            (define val (tree-value tree))
+            (define left (tree-left tree))
+            (define right (tree-right tree))
+            (+ val (tree-sum left) (tree-sum right)))]))
+
+(define sort (compose tree->list list->tree))
+        
+(define tree
+    (make-tree 10
+        (make-tree 9
+            (make-tree 3
+                nil
+                nil)
+            nil)
+        (make-tree 7
+            nil
+            nil)))
