@@ -166,6 +166,8 @@ fn load_functions(ctx: &mut Context) {
         "env-var" => env_var,
 
         "string-concat" => string_concat,
+
+        "random" => random
     }
 
     // Boolean logic

@@ -188,14 +188,15 @@ pub fn mul(args: &[Expression], _: &mut Context) -> Expression {
                 Quaternion(n) => Ok(n.clone()),
                 other => Err(other),
             }).collect();
-        if let Ok(xs) = xs {
-            Quaternion(Rc::new(
+        match xs {
+            Ok(xs) => Quaternion(Rc::new(
                 xs.into_iter()
                     .map(|x| x.as_ref().clone())
                     .fold(Quat(1.0, 0.0, 0.0, 0.0), Mul::mul),
-            ))
-        } else {
-            Exception(Rc::new(Arity(0, 0)))
+            )),
+            Err(other) => {
+                Exception(Rc::new(Signature("num".into(), other.type_of())))
+            }
         }
     }
 }
@@ -978,4 +979,16 @@ pub fn string_concat(args: &[Expression], _: &mut Context) -> Expression {
     }
 
     Str(buf.into())
+}
+
+use rand::prelude::*;
+
+pub fn random(args: &[Expression], ctx: &mut Context) -> Expression {
+    match args.len() {
+        0 => {
+            let rng = ctx.rng();
+            Num(Rng::gen(rng))
+        }
+        n => Exception(Rc::new(Arity(0, n))),
+    }
 }

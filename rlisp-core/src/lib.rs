@@ -25,6 +25,8 @@
 pub extern crate im;
 extern crate termcolor;
 
+extern crate rand;
+
 #[macro_use]
 extern crate lazy_static;
 extern crate regex;

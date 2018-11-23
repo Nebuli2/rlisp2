@@ -72,7 +72,7 @@ pub fn print_err(ex: &Exception) {
     let mut sout = StandardStream::stdout(ColorChoice::Always);
     sout.set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
         .expect("failed to set stdout color");
-    write!(sout, "error({:02})", ex.error_code())
+    write!(sout, "error({})", ex.error_code())
         .expect("failed to write to stdout");
     sout.set_color(ColorSpec::new().set_fg(None).set_bold(true))
         .expect("failed to set stdout color");

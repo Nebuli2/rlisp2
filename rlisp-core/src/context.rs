@@ -22,12 +22,15 @@ impl Default for Scope {
     }
 }
 
+use rand::prelude::*;
+
 /// Represents the evaluation context for use during the evaluation of rlisp
 /// expressions. It provides a means of accessing stored variables and
 /// information about custom struct types.
 pub struct Context {
     scopes: Vec<Scope>,
     struct_count: usize,
+    rng: ThreadRng,
 }
 
 impl Default for Context {
@@ -42,7 +45,12 @@ impl Context {
         Context {
             scopes: vec![Scope::default()],
             struct_count: 0,
+            rng: thread_rng(),
         }
+    }
+
+    pub fn rng(&mut self) -> &mut impl Rng {
+        &mut self.rng
     }
 
     /// Attempts to retrieve the value stored at the specified key in the
