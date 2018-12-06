@@ -167,7 +167,7 @@ fn load_functions(ctx: &mut Context) {
 
         "string-concat" => string_concat,
 
-        "random" => random
+        "random" => random,
     }
 
     // Boolean logic

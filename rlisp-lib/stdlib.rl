@@ -96,7 +96,7 @@
 ; (define-macro map (syntax [:])
 ;     [(map )])
 
-; tree = tree | nil
+; (tree a) = (tree a) | nil
 (define-struct tree [value left right])
 
 (define (singleton-tree val)
@@ -131,6 +131,7 @@
             (define right (tree-right tree))
             (+ val (tree-sum left) (tree-sum right)))]))
 
+; sort :: (list a) -> (list a)
 (define sort (compose tree->list list->tree))
         
 (define tree

@@ -6,6 +6,7 @@ name = "rlisp"
 version = "0.1.0"
 authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
 description = "A simple Lisp interpreter made in Rust, loosely based on Scheme"
+edition = "2018"
 
 [dependencies]
 rlisp-core = { path = "./rlisp-core/" }
