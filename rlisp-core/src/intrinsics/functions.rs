@@ -1008,3 +1008,25 @@ pub fn time_secs(args: &[Expression], _: &mut Context) -> Expression {
         n => Exception(Rc::new(Arity(0, n)))
     }
 }
+
+pub fn repeat(args: &[Expression], ctx: &mut Context) -> Expression {
+    match args {
+        [Num(n), cb @ Callable(_)] => {
+            let n = *n;
+            if n.trunc() == n {
+                let n = n as u32;
+                for _ in 0..n {
+                    let res = cb.call(&ConsList::new(), ctx);
+                    if (res.is_exception()) {
+                        return res;
+                    }
+                }
+                Expression::default()
+            } else {
+                Exception(Rc::new(Custom(100, "expected integral number".into())))
+            }
+        },
+        [a, b] => Exception(Rc::new(Signature("(num, procedure)".into(), format!("({}, {})", a.type_of(), b.type_of()).into()))),
+        xs => Exception(Rc::new(Arity(2, xs.len())))
+    }
+}

@@ -170,7 +170,8 @@ fn load_functions(ctx: &mut Context) {
         "string-concat" => string_concat,
 
         "random" => random,
-        "current-time" => time_secs
+        "current-time" => time_secs,
+        "repeat" => repeat
     }
 
     // Boolean logic
