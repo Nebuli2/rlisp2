@@ -7,94 +7,88 @@
 //! other expression is considered to be the "function."
 
 use crate::{
-    exception::Exception::*,
+    exception::Exception,
     expression::{
         Callable::*,
         Expression::{self, *},
     },
+    quat::Quat,
     util::{nil, wrap_begin},
-    quat::Quat
 };
 use im::ConsList;
 use regex::Regex;
-use std::{
-    rc::Rc,
-    str::FromStr
-};
+use std::{rc::Rc, str::FromStr};
 
 pub mod preprocessor;
 
 const QUAT_REGEX_STR_ABCD: &str = 
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
-const QUAT_REGEX_STR_AB: &str = 
+const QUAT_REGEX_STR_AB: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)i";
 
-const QUAT_REGEX_STR_AC: &str = 
+const QUAT_REGEX_STR_AC: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)j";
 
-const QUAT_REGEX_STR_AD: &str = 
+const QUAT_REGEX_STR_AD: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)k";
 
-const QUAT_REGEX_STR_BC: &str = 
+const QUAT_REGEX_STR_BC: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)j";
 
-const QUAT_REGEX_STR_BD: &str = 
+const QUAT_REGEX_STR_BD: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)k";
 
-const QUAT_REGEX_STR_CD: &str = 
+const QUAT_REGEX_STR_CD: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
-const QUAT_REGEX_STR_ABC: &str = 
+const QUAT_REGEX_STR_ABC: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)i([+-][0-9]*(\.[0-9]*)?)j";
 
-const QUAT_REGEX_STR_ABD: &str = 
+const QUAT_REGEX_STR_ABD: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)i([+-][0-9]*(\.[0-9]*)?)k";
 
-const QUAT_REGEX_STR_ACD: &str = 
+const QUAT_REGEX_STR_ACD: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
 const QUAT_REGEX_STR_BCD: &str = 
     r"([+-]?[0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
-const QUAT_REGEX_STR_B: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)i";
+const QUAT_REGEX_STR_B: &str = r"([+-]?[0-9]+(\.[0-9]*)?)i";
 
-const QUAT_REGEX_STR_C: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)j";
+const QUAT_REGEX_STR_C: &str = r"([+-]?[0-9]+(\.[0-9]*)?)j";
 
-const QUAT_REGEX_STR_D: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)k";
+const QUAT_REGEX_STR_D: &str = r"([+-]?[0-9]+(\.[0-9]*)?)k";
 
 lazy_static! {
-    static ref QUAT_REGEX_ABCD: Regex =
-        Regex::new(QUAT_REGEX_STR_ABCD).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_AB: Regex =
-        Regex::new(QUAT_REGEX_STR_AB).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_AC: Regex =
-        Regex::new(QUAT_REGEX_STR_AC).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_AD: Regex =
-        Regex::new(QUAT_REGEX_STR_AD).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_BC: Regex =
-        Regex::new(QUAT_REGEX_STR_BC).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_BD: Regex =
-        Regex::new(QUAT_REGEX_STR_BD).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_CD: Regex =
-        Regex::new(QUAT_REGEX_STR_CD).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_ABC: Regex =
-        Regex::new(QUAT_REGEX_STR_ABC).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_ABD: Regex =
-        Regex::new(QUAT_REGEX_STR_ABD).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_ACD: Regex =
-        Regex::new(QUAT_REGEX_STR_ACD).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_BCD: Regex =
-        Regex::new(QUAT_REGEX_STR_BCD).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_B: Regex =
-        Regex::new(QUAT_REGEX_STR_B).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_C: Regex =
-        Regex::new(QUAT_REGEX_STR_C).expect("quaternion regex failed to compile");
-    static ref QUAT_REGEX_D: Regex =
-        Regex::new(QUAT_REGEX_STR_D).expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_ABCD: Regex = Regex::new(QUAT_REGEX_STR_ABCD)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_AB: Regex = Regex::new(QUAT_REGEX_STR_AB)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_AC: Regex = Regex::new(QUAT_REGEX_STR_AC)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_AD: Regex = Regex::new(QUAT_REGEX_STR_AD)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_BC: Regex = Regex::new(QUAT_REGEX_STR_BC)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_BD: Regex = Regex::new(QUAT_REGEX_STR_BD)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_CD: Regex = Regex::new(QUAT_REGEX_STR_CD)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_ABC: Regex = Regex::new(QUAT_REGEX_STR_ABC)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_ABD: Regex = Regex::new(QUAT_REGEX_STR_ABD)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_ACD: Regex = Regex::new(QUAT_REGEX_STR_ACD)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_BCD: Regex = Regex::new(QUAT_REGEX_STR_BCD)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_B: Regex = Regex::new(QUAT_REGEX_STR_B)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_C: Regex = Regex::new(QUAT_REGEX_STR_C)
+        .expect("quaternion regex failed to compile");
+    static ref QUAT_REGEX_D: Regex = Regex::new(QUAT_REGEX_STR_D)
+        .expect("quaternion regex failed to compile");
 }
 
 /// Stores information regarding the current state of the parser, in particular
@@ -258,7 +252,7 @@ impl FromStr for Quat {
             let c = 0.0;
             let d = d_str.parse::<f64>().unwrap_or_default();
             Ok(Quat(a, b, c, d))
-        } else  {
+        } else {
             Err(ParseQuatError)
         }
     }
@@ -306,7 +300,7 @@ where
     pub fn parse_all(&mut self) -> Expression {
         let mut exprs = ConsList::new();
         while let Some(expr) = self.parse_expr() {
-            if let ex @ Exception(_) = expr {
+            if let ex @ Error(_) = expr {
                 return ex;
             } else {
                 exprs = exprs + ConsList::singleton(expr);
@@ -345,15 +339,18 @@ where
                         }
                     };
                     if !completed {
-                        return Some(Exception(Rc::new(Syntax(42, "unclosed block comment".into()))));
+                        return Some(Error(Rc::new(Exception::syntax(
+                            42,
+                            "unclosed block comment",
+                        ))));
                     }
                 }
                 self.parse_expr()
             }
             '"' => self.parse_str(),
-            ')' | ']' | '}' => Some(Exception(Rc::new(Syntax(
+            ')' | ']' | '}' => Some(Error(Rc::new(Exception::syntax(
                 5,
-                format!("unexpected list close").into(),
+                format!("unexpected list close"),
             )))),
             ';' => {
                 self.read_to(|ch| ch == '\n');
@@ -408,9 +405,9 @@ where
                                 } else {
                                     // Ensure that different operators are not used in infix lists
                                     if Some(expr) != op {
-                                        return Some(Exception(Rc::new(Syntax(
+                                        return Some(Error(Rc::new(Exception::syntax(
                                             6,
-                                            "infix list operators must be equal".into(),
+                                            "infix list operators must be equal",
                                         ))));
                                     }
                                 }
@@ -420,10 +417,10 @@ where
                             is_op = !is_op;
                         }
                         None => {
-                            return Some(Exception(Rc::new(Syntax(
+                            return Some(Error(Rc::new(Exception::syntax(
                                 7,
-                                "unclosed infix list".into(),
-                            ))))
+                                "unclosed infix list",
+                            ))));
                         }
                     }
                 }
@@ -475,14 +472,14 @@ where
                     self.unread(ch);
                     match self.parse_expr() {
                         Some(ref expr) if expr.is_exception() => {
-                            return Some(expr.clone())
+                            return Some(expr.clone());
                         }
                         Some(expr) => list = list + ConsList::singleton(expr),
                         None => {
-                            return Some(Exception(Rc::new(Syntax(
+                            return Some(Error(Rc::new(Exception::syntax(
                                 6,
-                                "unclosed list".into(),
-                            ))))
+                                "unclosed list",
+                            ))));
                         }
                     }
                 }
@@ -491,7 +488,7 @@ where
         if closed {
             Some(Cons(list))
         } else {
-            Some(Exception(Rc::new(Syntax(6, "unclosed list".into()))))
+            Some(Error(Rc::new(Exception::syntax(6, "unclosed list"))))
         }
     }
 
@@ -513,7 +510,10 @@ where
                 ch => buf.push(ch),
             }
         }
-        Some(Exception(Rc::new(Syntax(8, "unclosed string literal".into()))))
+        Some(Error(Rc::new(Exception::syntax(
+            8,
+            "unclosed string literal",
+        ))))
     }
 
     /// Parses an atom, which is a boolean value, quote, quasiquote, unquote, a
@@ -636,7 +636,7 @@ mod tests {
         let input = "\"Hello, world!\"".chars();
         let mut parser = Parser::new(input);
         let found = parser.parse_expr();
-        let expected = Some(Expression::Str("Hello, world!".into()));
+        let expected = Some(Expression::Str("Hello, world!"));
         assert_eq!(&found, &expected);
     }
 }

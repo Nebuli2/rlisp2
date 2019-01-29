@@ -11,10 +11,11 @@ pub fn run_repl(ctx: &mut Context) {
         .parse_expr()
         .map(|expr| expr.eval(ctx))
         .map(|res| {
-            if let Exception(ex) = res {
+            if let Error(ex) = res {
                 print_err(&ex);
             }
-        }).unwrap_or_else(|| {
+        })
+        .unwrap_or_else(|| {
             println!("unknown error occurred");
         });
 }

@@ -4,10 +4,7 @@
 
 use crate::{
     context::Context,
-    exception::{
-        self,
-        Exception::{self, *},
-    },
+    exception::{self, Exception},
     quat::Quat,
     util::Str,
 };
@@ -91,7 +88,7 @@ pub enum Expression {
     Callable(Callable),
 
     /// An exception.
-    Exception(Rc<exception::Exception>),
+    Error(Rc<Exception>),
 
     /// A custom struct.
     Struct(Rc<StructData>),
@@ -110,7 +107,7 @@ impl Expression {
             Bool(..) => "bool".into(),
             Str(..) => "string".into(),
             Cons(..) => "cons".into(),
-            Exception(..) => "error".into(),
+            Error(..) => "error".into(),
             Symbol(..) => "symbol".into(),
             Callable(..) => "procedure".into(),
             Struct(data) => data.name.clone(),
@@ -128,7 +125,7 @@ impl Expression {
     /// Determines whether or not the expression is an exception.
     pub fn is_exception(&self) -> bool {
         match self {
-            Exception(..) => true,
+            Error(..) => true,
             _ => false,
         }
     }
@@ -199,7 +196,7 @@ impl Expression {
         ctx: &mut Context,
     ) -> Expression {
         match self {
-            ex @ Exception(..) => ex.clone(),
+            ex @ Error(..) => ex.clone(),
             Callable(func) => match func {
                 Quote => match list.len() - 1 {
                     1 => {
@@ -207,7 +204,7 @@ impl Expression {
                         let expr = list.iter().nth(1).unwrap();
                         expr.as_ref().clone()
                     }
-                    len => Exception(Rc::new(Arity(1, len))),
+                    len => Error(Rc::new(Exception::arity(1, len))),
                 },
                 Quasiquote => match list.len() - 1 {
                     1 => {
@@ -215,12 +212,11 @@ impl Expression {
                         let expr = list.iter().nth(1).unwrap();
                         expr.eval_quasiquote(ctx)
                     }
-                    len => Exception(Rc::new(Arity(1, len))),
+                    len => Error(Rc::new(Exception::arity(1, len))),
                 },
-                Unquote => Exception(Rc::new(Syntax(
+                Unquote => Error(Rc::new(Exception::syntax(
                     33,
-                    "unquote expression must be contained in a quasiquote"
-                        .into(),
+                    "unquote expression must be contained in a quasiquote",
                 ))),
 
                 Macro(f) => f(list.clone(), ctx),
@@ -230,11 +226,11 @@ impl Expression {
                         .unwrap_or_else(|| ConsList::new())
                         .iter()
                         .map(|expr| match expr.eval(ctx) {
-                            Exception(e) => Err(e),
+                            Error(e) => Err(e),
                             expr => Ok(expr),
-                        }).collect();
-                    args.map(|args| f(&args, ctx))
-                        .unwrap_or_else(|e| Exception(e))
+                        })
+                        .collect();
+                    args.map(|args| f(&args, ctx)).unwrap_or_else(|e| Error(e))
                 }
                 Lambda(data) => {
                     let LambdaData {
@@ -247,9 +243,10 @@ impl Expression {
                         .unwrap_or_default()
                         .iter()
                         .map(|expr| match expr.eval(ctx) {
-                            e @ Exception(_) => Err(e),
+                            Error(e) => Err(e),
                             expr => Ok(expr),
-                        }).collect();
+                        })
+                        .collect();
                     args.map(|args| {
                         eval_lambda(
                             params.clone(),
@@ -258,12 +255,13 @@ impl Expression {
                             ctx,
                             capture.as_ref().map(|cap| cap.as_ref()),
                         )
-                    }).unwrap_or_else(|e| e)
+                    })
+                    .unwrap_or_else(|e| Error(e))
                 }
             },
-            _ => Exception(Rc::new(Custom(
+            _ => Error(Rc::new(Exception::custom(
                 3,
-                format!("not a callable value: `{}`", self).into(),
+                format!("not a callable value: `{}`", self),
             ))),
         }
     }
@@ -274,7 +272,7 @@ impl Expression {
             // Look up variable
             Symbol(ident) => {
                 ctx.get(ident).map(|expr| expr.clone()).unwrap_or_else(|| {
-                    Exception(Rc::new(Undefined(ident.clone())))
+                    Error(Rc::new(Exception::undefined(ident.clone())))
                 })
             }
 
@@ -282,12 +280,16 @@ impl Expression {
             Cons(list) => {
                 if let Some(func) = list.head() {
                     let func = func.eval(ctx);
-                    func.call(list, ctx)
+                    let res = func.call(list, ctx);
+                    match res {
+                        Error(ex) => Error(Rc::new(ex.extend(self))),
+                        other => other
+                    }
                 } else {
-                    Exception(Rc::new(Custom(
+                    Error(Rc::new(Exception::custom(
                         3,
-                        "no function specified".into(),
-                    )))
+                        "no function specified",
+                    ).extend(self)))
                 }
             }
 
@@ -327,7 +329,7 @@ fn eval_lambda(
             ctx.descend_scope();
             res
         }
-        (expected, found) => Exception(Rc::new(Arity(expected, found))),
+        (expected, found) => Error(Rc::new(Exception::arity(expected, found))),
     }
 }
 
@@ -373,7 +375,7 @@ impl fmt::Display for Expression {
                 Macro(_) => write!(f, "<macro>"),
                 _ => write!(f, "<procedure>"),
             },
-            Exception(ex) => write!(f, "error[{:03}]: {}", ex.error_code(), ex),
+            Error(ex) => write!(f, "error[{:03}]: {}", ex.error_code(), ex),
             Struct(data) => {
                 let StructData { name, data } = data.as_ref();
                 write!(f, "(make-{}", name)?;
@@ -516,7 +518,7 @@ impl<'a> Into<Expression> for &'a str {
 impl Into<Result<Expression, Exception>> for Expression {
     fn into(self) -> Result<Expression, Exception> {
         match self {
-            Exception(ex) => Err(ex.as_ref().clone()),
+            Error(ex) => Err(ex.as_ref().clone()),
             other => Ok(other),
         }
     }

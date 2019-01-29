@@ -1,5 +1,5 @@
 use crate::{
-    exception::Exception::{self, *},
+    exception::Exception,
     expression::Expression::{self, *},
     util::Str,
 };
@@ -86,12 +86,12 @@ fn extract_matches(
 
         // Otherwise it isn't a match; fail
         (x, y) => {
-            return Err(Custom(
+            return Err(Exception::custom(
                 42,
                 format!(
                     "pattern match failure: expected `{}`, found `{}`",
                     x, y
-                ).into(),
+                ),
             ));
         }
     }

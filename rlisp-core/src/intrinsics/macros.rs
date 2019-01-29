@@ -4,7 +4,7 @@
 
 use crate::{
     context::Context,
-    exception::Exception::*,
+    exception::Exception,
     expression::{
         Callable::*,
         Expression::{self, *},
@@ -28,14 +28,16 @@ fn create_lambda(
         .map(|param| match *param {
             Symbol(ref name) => Ok(name.clone()),
             _ => Err(()),
-        }).collect();
+        })
+        .collect();
     params
         .map(|params| {
             let body = if body.len() == 1 {
                 body.head().map(|expr| expr.as_ref().clone())
             } else {
                 Some(wrap_begin(body))
-            }.unwrap_or_default();
+            }
+            .unwrap_or_default();
             let capture = body.extract_symbols(ctx);
             let capture = if capture.is_empty() {
                 None
@@ -47,8 +49,9 @@ fn create_lambda(
                 body: Rc::new(body.clone()),
                 capture: capture.map(Rc::new),
             })))
-        }).unwrap_or_else(|_| {
-            Exception(Rc::new(Syntax(17, "(lambda [args...] body)".into())))
+        })
+        .unwrap_or_else(|_| {
+            Error(Rc::new(Exception::syntax(17, "(lambda [args...] body)")))
         })
 }
 
@@ -63,10 +66,10 @@ pub fn lambda(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         (Some(params), Some(body)) => match params.as_ref() {
             Cons(list) => create_lambda(list.clone(), body, ctx),
             _ => {
-                Exception(Rc::new(Syntax(17, "(lambda [args...] body)".into())))
+                Error(Rc::new(Exception::syntax(17, "(lambda [args...] body)")))
             }
         },
-        _ => Exception(Rc::new(Syntax(17, "(lambda [args...] body)".into()))),
+        _ => Error(Rc::new(Exception::syntax(17, "(lambda [args...] body)"))),
     }
 }
 
@@ -77,7 +80,7 @@ pub fn define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
     list.tail()
         .and_then(|list| list.head())
         .map(|head| (*head).clone())
-        .ok_or_else(|| Arity(2, list.len() - 1))
+        .ok_or_else(|| Exception::arity(2, list.len() - 1))
         .and_then(|head| match head {
             Symbol(ident) => {
                 // Simple binding
@@ -91,23 +94,22 @@ pub fn define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                                 .nth(2)
                                 .map(|expr| expr.eval(ctx))
                                 .unwrap();
-                            if let Exception(ex) = value {
+                            if let Error(ex) = value {
                                 Err(ex.as_ref().clone())
                             } else {
                                 ctx.insert(ident, value);
                                 Ok(Expression::default())
                             }
                         } else {
-                            Err(Custom(
+                            Err(Exception::custom(
                                 28,
-                                format!("reserved identifier: {}", ident)
-                                    .into(),
+                                format!("reserved identifier: {}", ident),
                             ))
                         }
                     }
                     len => {
                         // Arity mismatch
-                        Err(Arity(3, len))
+                        Err(Exception::arity(3, len))
                     }
                 }
             }
@@ -115,38 +117,35 @@ pub fn define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                 // Function binding
                 let ident = func.head().map(|ident| (*ident).clone());
                 ident
-                    .ok_or_else(|| Arity(2, 0))
+                    .ok_or_else(|| Exception::arity(2, 0))
                     .and_then(|ident| {
                         if let Symbol(ref s) = ident {
                             if s.is_valid_identifier() {
                                 Ok(ident.clone())
                             } else {
-                                Err(Custom(
+                                Err(Exception::custom(
                                     28,
-                                    format!("reserved identifier: {}", s)
-                                        .into(),
+                                    format!("reserved identifier: {}", s),
                                 ))
                             }
                         } else {
-                            Err(Signature("symbol".into(), ident.type_of()))
+                            Err(Exception::signature("symbol", ident.type_of()))
                         }
-                    }).and_then(|ident| match ident {
+                    })
+                    .and_then(|ident| match ident {
                         Symbol(ident) => {
                             // Continue
                             let params = func.tail().unwrap_or_default();
-                            let params: Result<
-                                ConsList<_>,
-                                _,
-                            > = params
+                            let params: Result<ConsList<_>, _> = params
                                 .iter()
                                 .map(|param| match param.as_ref() {
                                     ident @ Symbol(..) => Ok(ident.clone()),
-                                    _ => Err(Syntax(
+                                    _ => Err(Exception::syntax(
                                         27,
-                                        "function parameters must be symbols"
-                                            .into(),
+                                        "function parameters must be symbols",
                                     )),
-                                }).collect();
+                                })
+                                .collect();
                             params.map(|params| {
                                 let body =
                                     list.tail().and_then(|list| list.tail());
@@ -160,18 +159,19 @@ pub fn define(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                         }
                         _ => {
                             // Error, must have symbol as function identifier
-                            Err(Syntax(
+                            Err(Exception::syntax(
                                 25,
-                                "value must be bound to a symbol".into(),
+                                "value must be bound to a symbol",
                             ))
                         }
                     })
             }
-            _ => Err(Syntax(
+            _ => Err(Exception::syntax(
                 26,
-                "define must bind either a function or a symbol".into(),
+                "define must bind either a function or a symbol",
             )),
-        }).unwrap_or_else(|ex| Exception(Rc::new(ex)))
+        })
+        .unwrap_or_else(|ex| Error(Rc::new(ex)))
 }
 
 /// `(env <ident>)`
@@ -186,8 +186,9 @@ pub fn env(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         Symbol(ident) => {
             ctx.get(ident).map(|expr| expr.clone()).unwrap_or_else(nil)
         }
-        _ => Exception(Rc::new(Signature("symbol".into(), arg.type_of()))),
-    }).unwrap_or_else(|| Exception(Rc::new(Arity(1, 99))))
+        _ => Error(Rc::new(Exception::signature("symbol", arg.type_of()))),
+    })
+    .unwrap_or_else(|| Error(Rc::new(Exception::arity(1, 99))))
 }
 
 /// `(if <cond> <then> <else>)`
@@ -219,7 +220,7 @@ pub fn if_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         .and_then(|tail| tail.tail())
         .and_then(|tail| tail.head());
     match (cond, then_branch, else_branch) {
-        (Some(ex @ Exception(_)), ..) => ex.clone(),
+        (Some(ex @ Error(_)), ..) => ex.clone(),
         (Some(Bool(cond)), Some(then_branch), Some(else_branch)) => {
             if cond {
                 then_branch.eval(ctx)
@@ -227,11 +228,11 @@ pub fn if_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                 else_branch.eval(ctx)
             }
         }
-        (Some(a), Some(b), Some(c)) => Exception(Rc::new(Signature(
-            "bool, any, any".into(),
-            format!("{}, {}, {}", a.type_of(), b.type_of(), c.type_of()).into(),
+        (Some(a), Some(b), Some(c)) => Error(Rc::new(Exception::signature(
+            "bool, any, any",
+            format!("{}, {}, {}", a.type_of(), b.type_of(), c.type_of()),
         ))),
-        _ => Exception(Rc::new(Arity(3, list.len()))),
+        _ => Error(Rc::new(Exception::arity(3, list.len()))),
     }
 }
 
@@ -264,7 +265,7 @@ pub fn cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
 
                 match (cond, value) {
                     (Some(cond), Some(value)) => match cond.eval(ctx) {
-                        ex @ Exception(_) => return ex.clone(),
+                        ex @ Error(_) => return ex.clone(),
                         Bool(false) => (),
                         Bool(true) => {
                             ctx.descend_scope();
@@ -272,26 +273,26 @@ pub fn cond(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                         }
                         _ => {
                             ctx.descend_scope();
-                            return Exception(Rc::new(Syntax(
+                            return Error(Rc::new(Exception::syntax(
                                 18,
-                                "condition must be a boolean value".into(),
+                                "condition must be a boolean value",
                             )));
                         }
                     },
                     _ => {
                         ctx.descend_scope();
-                        return Exception(Rc::new(Syntax(
+                        return Error(Rc::new(Exception::syntax(
                             19,
-                            "condition case must contain 2 elements".into(),
+                            "condition case must contain 2 elements",
                         )));
                     }
                 }
             }
             _ => {
                 ctx.descend_scope();
-                return Exception(Rc::new(Syntax(
+                return Error(Rc::new(Exception::syntax(
                     20,
-                    "condition case must be a list".into(),
+                    "condition case must be a list",
                 )));
             }
         }
@@ -319,10 +320,10 @@ pub fn let_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
 
     ctx.ascend_scope();
     let bindings = bindings
-        .ok_or_else(|| Arity(2, 0))
+        .ok_or_else(|| Exception::arity(2, 0))
         .and_then(|bindings| match bindings.as_ref().clone() {
             Cons(bindings_list) => Ok(bindings_list),
-            _ => Err(Syntax(21, "binding list must be a list of bindings".into())), // Better error handling than none
+            _ => Err(Exception::syntax(21, "binding list must be a list of bindings")), // Better error handling than none
         }).and_then(|bindings| {
             for binding in bindings.iter() {
                 match binding.as_ref() {
@@ -340,24 +341,24 @@ pub fn let_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                                 }
                             }
                             other => {
-                                return Err(Syntax(
+                                return Err(Exception::syntax(
                                     22,
                                     format!(
                                         "identifier in binding must be a symbol, found {}",
                                         other
-                                    ).into(),
+                                    ),
                                 ))
                             }
                         }
                     }
-                    Cons(list) => return Err(Arity(2, list.len())),
+                    Cons(list) => return Err(Exception::arity(2, list.len())),
                     other => {
-                        return Err(Syntax(
+                        return Err(Exception::syntax(
                             23,
                             format!(
                                 "binding must be a list containing a symbol and a value, found {}",
                                 other
-                            ).into(),
+                            ),
                         ))
                     }
                 }
@@ -366,13 +367,14 @@ pub fn let_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
         });
 
     let body = bindings
-        .and(body.ok_or_else(|| Syntax(24, "let body not found".into())))
+        .and(body.ok_or_else(|| Exception::syntax(24, "let body not found")))
         .map(|body| match body.len() {
             1 => body.head().unwrap().as_ref().clone(),
             _ => wrap_begin(body),
-        }).map(|body| body.eval(ctx));
+        })
+        .map(|body| body.eval(ctx));
     ctx.descend_scope();
-    body.unwrap_or_else(|ex| Exception(Rc::new(ex)))
+    body.unwrap_or_else(|ex| Error(Rc::new(ex)))
 }
 
 /// `(try <expr> <handler>)`
@@ -388,12 +390,13 @@ pub fn try_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
 
             if handler.is_callable() {
                 let expr = expr.eval(ctx);
-                if let Exception(ex) = expr {
+                if let Error(ex) = expr {
+                    let stack_trace = ex.to_string();
                     let expr = Struct(Rc::new(StructData {
                         name: "error".into(),
                         data: vec![
-                            (ex.error_code() as f64).into(),
-                            ex.to_string().into(),
+                            (ex.error_code() as f64).into(), // error-code
+                            stack_trace.into(), // error-description
                         ],
                     }));
                     let handle_list = cons![handler, expr];
@@ -402,13 +405,13 @@ pub fn try_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                     expr
                 }
             } else {
-                Exception(Rc::new(Custom(
+                Error(Rc::new(Exception::custom(
                     2,
-                    format!("not a callable value: `{}`", handler).into(),
+                    format!("not a callable value: `{}`", handler),
                 )))
             }
         }
-        n => Exception(Rc::new(Arity(2, n))),
+        n => Error(Rc::new(Exception::arity(2, n))),
     }
 }
 
@@ -442,8 +445,8 @@ pub fn define_struct(
             if let Symbol(s) = name.as_ref() {
                 name_str = s;
             } else {
-                return Exception(Rc::new(Signature(
-                    "symbol".into(),
+                return Error(Rc::new(Exception::signature(
+                    "symbol",
                     name.type_of(),
                 )));
             }
@@ -452,9 +455,9 @@ pub fn define_struct(
             if let Some(id_inner) = env.define_struct(name_str) {
                 id = id_inner;
             } else {
-                return Exception(Rc::new(Custom(
+                return Error(Rc::new(Exception::custom(
                     31,
-                    "could not define struct".into(),
+                    "could not define struct",
                 )));
             }
 
@@ -464,8 +467,8 @@ pub fn define_struct(
             if let Cons(list) = members.as_ref() {
                 members_symbols = list;
             } else {
-                return Exception(Rc::new(Signature(
-                    "cons".into(),
+                return Error(Rc::new(Exception::signature(
+                    "cons",
                     name.type_of(),
                 )));
             }
@@ -476,10 +479,10 @@ pub fn define_struct(
                 match ex.as_ref() {
                     Symbol(member) => member_names.push(member.clone()),
                     other => {
-                        return Exception(Rc::new(Signature(
-                            "symbol".into(),
+                        return Error(Rc::new(Exception::signature(
+                            "symbol",
                             other.type_of(),
-                        )))
+                        )));
                     }
                 }
             }
@@ -492,16 +495,15 @@ pub fn define_struct(
                         let StructData { data, .. } = data.as_ref();
                         data.get(i).map(|expr| expr.clone()).unwrap_or_else(
                             || {
-                                Exception(Rc::new(Custom(
+                                Error(Rc::new(Exception::custom(
                                     29,
-                                    "struct does not contain specified field"
-                                        .into(),
+                                    "struct does not contain specified field",
                                 )))
                             },
                         )
                     }
-                    // [x] => Exception(Signature(name_symbol.clone(), x.type_of())),
-                    xs => Exception(Rc::new(Arity(1, xs.len()))),
+                    // [x] => Error(Exception::signature(name_symbol.clone(), x.type_of())),
+                    xs => Error(Rc::new(Exception::arity(1, xs.len()))),
                 };
                 let accessor = format!("{}-{}", name, member);
                 env.insert(accessor.clone(), Callable(Intrinsic(Rc::new(get))));
@@ -562,14 +564,14 @@ pub fn define_struct(
                             _ => unreachable!(),
                         }
                     }
-                    n => Exception(Rc::new(Arity(member_count, n))),
+                    n => Error(Rc::new(Exception::arity(member_count, n))),
                 }
             };
             let constructor = format!("make-{}", name_str);
             env.insert(constructor, Callable(Macro(Rc::new(make))));
             Expression::default()
         }
-        n => Exception(Rc::new(Arity(2, n))),
+        n => Error(Rc::new(Exception::arity(2, n))),
     }
 }
 
@@ -591,11 +593,11 @@ pub fn begin(list: ConsList<Expression>, env: &mut Context) -> Expression {
 
 macro_rules! check_arity {
     ($expected:expr, $found:expr) => {{
-        use $crate::exception::Exception::Arity;
-        use $crate::expression::Expression::Exception;
+        use $crate::exception::Exception;
+        use $crate::expression::Expression::Error;
 
         if $found != $expected {
-            return Exception(Rc::new(Arity($expected, $found)));
+            return Error(Rc::new(Exception::arity($expected, $found)));
         }
     }};
 }
@@ -628,19 +630,19 @@ pub fn define_syntax_rule(
 
     match pattern {
         Cons(ref pat) if pat.len() < 1 => {
-            return Exception(Rc::new(Syntax(
+            return Error(Rc::new(Exception::syntax(
                 37,
-                "macro definition must include a name".into(),
-            )))
+                "macro definition must include a name",
+            )));
         }
         Cons(pat) => {
             let name = match pat.iter().nth(0).unwrap().as_ref().clone() {
                 Symbol(name) => name,
                 _ => {
-                    return Exception(Rc::new(Custom(
+                    return Error(Rc::new(Exception::custom(
                         38,
-                        "macro name must be a symbol".into(),
-                    )))
+                        "macro name must be a symbol",
+                    )));
                 }
             };
 
@@ -654,7 +656,7 @@ pub fn define_syntax_rule(
                             let replaced = replace_symbols(&body, &matches);
                             replaced.eval(ctx)
                         }
-                        Err(ex) => Exception(Rc::new(ex)),
+                        Err(ex) => Error(Rc::new(ex)),
                     }
                 };
             let wrapped_macro = Callable(Macro(Rc::new(defined_macro)));
@@ -662,7 +664,7 @@ pub fn define_syntax_rule(
             Expression::default()
         }
         _ => {
-            Exception(Rc::new(Syntax(40, "syntax rule must be a list".into())))
+            Error(Rc::new(Exception::syntax(40, "syntax rule must be a list")))
         }
     }
 }

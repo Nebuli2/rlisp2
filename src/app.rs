@@ -46,7 +46,7 @@ pub fn run() {
     let mut ctx = init_context();
     let res = import(&[Str(lib_loc.into())], &mut ctx);
 
-    if let Exception(ex) = res {
+    if let Error(ex) = res {
         print_err(&ex);
         return;
     }
@@ -55,7 +55,7 @@ pub fn run() {
         Some(input) => {
             // Load input file
             let res = import(&[Str(input.into())], &mut ctx);
-            if let Exception(ex) = res {
+            if let Error(ex) = res {
                 print_err(&ex);
                 return;
             }

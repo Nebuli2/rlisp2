@@ -6,17 +6,91 @@
 //! * `Syntax`
 //! * `Custom`
 
-use crate::util::Str;
+use crate::{expression::Expression, util::Str};
+use im::ConsList;
 use std::fmt;
 
 /// An `ErrorCode` is a numerical representation of each individual type of
 /// error.
 pub type ErrorCode = u16;
 
+#[derive(Clone, Debug)]
+pub struct Exception {
+    stack: ConsList<Expression>,
+    data: ExceptionData,
+}
+
+impl Exception {
+    pub fn arity(expected: usize, found: usize) -> Exception {
+        Exception {
+            stack: ConsList::new(),
+            data: Arity(expected, found),
+        }
+    }
+
+    pub fn signature(
+        expected: impl Into<Str>,
+        found: impl Into<Str>,
+    ) -> Exception {
+        Exception {
+            stack: ConsList::new(),
+            data: Signature(expected.into(), found.into()),
+        }
+    }
+
+    pub fn custom(code: ErrorCode, description: impl Into<Str>) -> Exception {
+        Exception {
+            stack: ConsList::new(),
+            data: Custom(code, description.into()),
+        }
+    }
+
+    pub fn undefined(symbol: impl Into<Str>) -> Exception {
+        Exception {
+            stack: ConsList::new(),
+            data: Undefined(symbol.into()),
+        }
+    }
+
+    pub fn syntax(code: ErrorCode, description: impl Into<Str>) -> Exception {
+        Exception {
+            stack: ConsList::new(),
+            data: Syntax(code, description.into()),
+        }
+    }
+
+    pub fn extend(&self, expr: &Expression) -> Exception {
+        let Exception { stack, data } = self.clone();
+        Exception {
+            stack: stack.cons(expr.clone()),
+            data,
+        }
+    }
+
+    pub fn error_code(&self) -> ErrorCode {
+        self.data.error_code()
+    }
+
+    pub fn stack(&self) -> ConsList<Expression> {
+        self.stack.clone()
+    }
+}
+
+impl fmt::Display for Exception {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let stack: Vec<_> = self.stack().iter().collect();
+        write!(f, "{}", self.data)?;
+        for (i, item) in stack.into_iter().rev().enumerate() {
+            write!(f, "\n  [{}] {}", i + 1, item)?;
+        }
+        Ok(())
+    }
+}
+
 /// The `Exception` type represents all possible exceptions in the rlisp
 /// language.
-#[derive(Clone)]
-pub enum Exception {
+#[derive(Clone, Debug)]
+pub enum ExceptionData {
     /// An arity mismatch exception, where the number of arguments
     /// provided to a function does not match the number of arguments expected.
     Arity(usize, usize),
@@ -28,16 +102,16 @@ pub enum Exception {
     /// Any exception that does not fit into the other categories.
     Custom(ErrorCode, Str),
 
-    /// RAn exception wherein the specified symbol is undefined.
+    /// An exception wherein the specified symbol is undefined.
     Undefined(Str),
 
     /// An arbitrary syntax exception.
     Syntax(ErrorCode, Str),
 }
 
-use self::Exception::*;
+use self::ExceptionData::*;
 
-impl fmt::Display for Exception {
+impl fmt::Display for ExceptionData {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Arity(expected, found) => write!(
@@ -57,7 +131,7 @@ impl fmt::Display for Exception {
     }
 }
 
-impl Exception {
+impl ExceptionData {
     /// Produces the error code of the `Exception`.
     pub fn error_code(&self) -> ErrorCode {
         match self {

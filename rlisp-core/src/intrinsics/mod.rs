@@ -2,7 +2,7 @@
 
 use crate::{
     context::Context,
-    expression::{Callable, Expression}
+    expression::{Callable, Expression},
 };
 use im::ConsList;
 use std::rc::Rc;
