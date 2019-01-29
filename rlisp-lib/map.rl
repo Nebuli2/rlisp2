@@ -11,8 +11,6 @@
         v
         (m key))))
 
-(define ABC 'abc)
-
 (define (map-of pairs)
     (if (empty? pairs)
         map-empty

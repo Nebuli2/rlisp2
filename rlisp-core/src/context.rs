@@ -1,7 +1,7 @@
 //! This module provides the `Context` struct for storing data during the
 //! evaluation of expressions.
 
-use expression::Expression;
+use crate::expression::Expression;
 use std::collections::HashMap;
 
 /// The ID of an rlisp struct type.

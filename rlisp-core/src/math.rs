@@ -27,7 +27,7 @@ impl Ln for f64 {
     }
 }
 
-use quat::Quat;
+use crate::quat::Quat;
 
 impl Exp for Quat {
     type Output = Self;

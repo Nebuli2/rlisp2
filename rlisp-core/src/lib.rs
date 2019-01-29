@@ -23,13 +23,9 @@
 // #![warn(missing_docs)]
 
 pub extern crate im;
-extern crate termcolor;
-
-extern crate rand;
 
 #[macro_use]
 extern crate lazy_static;
-extern crate regex;
 
 #[macro_use]
 pub mod util;
@@ -50,7 +46,7 @@ pub mod pattern;
 /// The prelude module re-exports commonly used portions of the `rlisp_core`
 /// crate for easier access.
 pub mod prelude {
-    pub use {
+    pub use crate::{
         context::Context, exception::Exception, expression::Expression,
         intrinsics::init_context, parser::Parser, util::nil,
     };

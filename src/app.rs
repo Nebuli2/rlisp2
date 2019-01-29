@@ -1,5 +1,5 @@
+use crate::repl::run_repl;
 use clap::{App, Arg, ArgMatches};
-use repl::run_repl;
 use rlisp_core::{
     expression::Expression::*, intrinsics::functions::import, prelude::*,
     util::print_err,

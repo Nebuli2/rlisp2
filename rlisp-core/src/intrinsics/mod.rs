@@ -1,7 +1,9 @@
 //! This module provides access to intrinsic functions of the interpreter.
 
-use context::Context;
-use expression::{Callable, Expression};
+use crate::{
+    context::Context,
+    expression::{Callable, Expression}
+};
 use im::ConsList;
 use std::rc::Rc;
 

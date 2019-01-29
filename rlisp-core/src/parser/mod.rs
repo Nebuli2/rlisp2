@@ -13,10 +13,14 @@ use crate::{
         Expression::{self, *},
     },
     util::{nil, wrap_begin},
+    quat::Quat
 };
 use im::ConsList;
 use regex::Regex;
-use std::rc::Rc;
+use std::{
+    rc::Rc,
+    str::FromStr
+};
 
 pub mod preprocessor;
 
@@ -103,9 +107,6 @@ where
     iter: I::IntoIter,
     stack: Vec<char>,
 }
-
-use quat::Quat;
-use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct ParseQuatError;

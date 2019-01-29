@@ -1,9 +1,3 @@
-#![allow(unknown_lints)]
-#![warn(clippy)]
-
-extern crate clap;
-extern crate rlisp_core;
-
 mod app;
 mod repl;
 

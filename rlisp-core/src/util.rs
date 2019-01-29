@@ -1,10 +1,9 @@
 //! This module contains a set of utility functions and types that did not fit
 //! into other modules.
 
-use exception::Exception;
-use expression::{
-    Callable::*,
-    Expression::{self, *},
+use crate::{
+    exception::Exception,
+    expression::Expression::{self, *},
 };
 use im::ConsList;
 use std::{io::prelude::*, rc::Rc};

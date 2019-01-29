@@ -6,8 +6,8 @@
 //! * `Syntax`
 //! * `Custom`
 
+use crate::util::Str;
 use std::fmt;
-use util::Str;
 
 /// An `ErrorCode` is a numerical representation of each individual type of
 /// error.
