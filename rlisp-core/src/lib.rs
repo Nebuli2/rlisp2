@@ -27,6 +27,8 @@ pub extern crate im;
 #[macro_use]
 extern crate lazy_static;
 
+extern crate time;
+
 #[macro_use]
 pub mod util;
 

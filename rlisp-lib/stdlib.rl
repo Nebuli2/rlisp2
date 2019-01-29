@@ -144,3 +144,9 @@
         (make-tree 7
             nil
             nil)))
+
+(define (time action)
+    (define start (current-time))
+    (action)
+    (define stop (current-time))
+    (- stop start))

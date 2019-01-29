@@ -992,3 +992,19 @@ pub fn random(args: &[Expression], ctx: &mut Context) -> Expression {
         n => Exception(Rc::new(Arity(0, n))),
     }
 }
+
+fn timestamp() -> f64 {
+    let timespec = time::get_time();
+    let mills: f64 = timespec.sec as f64 + (timespec.nsec as f64 / 1000.0 / 1000.0 / 1000.0);
+    mills
+}
+
+pub fn time_secs(args: &[Expression], _: &mut Context) -> Expression {
+    match args.len() {
+        0 => {
+            let time = timestamp();
+            Num(time)
+        },
+        n => Exception(Rc::new(Arity(0, n)))
+    }
+}

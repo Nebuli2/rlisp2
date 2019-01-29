@@ -4,8 +4,11 @@ use rlisp_core::{
     expression::Expression::*, intrinsics::functions::import, prelude::*,
     util::print_err,
 };
+use std::env;
 
-const RLISP_HOME: &str = env!("RLISP_HOME");
+fn rlisp_home() -> String {
+    env::var("RLISP_HOME").expect("RLISP_HOME not defined")
+}
 
 fn create_app<'a>() -> ArgMatches<'a> {
     App::new(env!("CARGO_PKG_NAME"))
@@ -38,7 +41,7 @@ pub fn run() {
     let lib_loc = matches
         .value_of("lib-loc")
         .map(ToString::to_string)
-        .unwrap_or_else(|| format!("{}/loader.rl", RLISP_HOME));
+        .unwrap_or_else(|| format!("{}/loader.rl", rlisp_home()));
 
     let mut ctx = init_context();
     let res = import(&[Str(lib_loc.into())], &mut ctx);
