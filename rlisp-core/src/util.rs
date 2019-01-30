@@ -123,7 +123,7 @@ pub fn print_stack_trace(ex: &Exception) {
     let stack: Vec<_> = ex.stack().iter().collect();
     print_err_no_ln(ex);
     for (i, item) in stack.into_iter().rev().enumerate() {
-        sout.set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(false)).unwrap();
+        sout.set_color(ColorSpec::new().set_fg(None).set_bold(false)).unwrap();
         write!(sout, "\n at ").unwrap();
         sout.set_color(ColorSpec::new().set_fg(None).set_bold(true)).unwrap();
         write!(sout, "[{}]", i).unwrap();
