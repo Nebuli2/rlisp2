@@ -45,7 +45,7 @@
                 (printfln "#{value}")
                 nil)
             (set! _ value))
-        err)
+        print-error)
     (repl))
 
 ; version :: -> string

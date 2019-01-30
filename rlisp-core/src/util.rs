@@ -61,13 +61,7 @@ pub fn clear_color() {
     set_stdout_color(None);
 }
 
-/// Prints the specified exception in the following format:
-/// ```rustlisp
-/// error(<error_code>): <description>
-/// ```
-/// The initial part before the colon is printed in bold red text, and the
-/// description in bold, uncolored text.
-pub fn print_err(ex: &Exception) {
+fn print_err_no_ln(ex: &Exception) {
     let mut sout = StandardStream::stdout(ColorChoice::Always);
     sout.set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
         .expect("failed to set stdout color");
@@ -75,9 +69,20 @@ pub fn print_err(ex: &Exception) {
         .expect("failed to write to stdout");
     sout.set_color(ColorSpec::new().set_fg(None).set_bold(true))
         .expect("failed to set stdout color");
-    write!(sout, ": {}\n", ex).expect("failed to write to stdout");
+    write!(sout, ": {}", ex).expect("failed to write to stdout");
     sout.set_color(ColorSpec::new().set_fg(None).set_bold(false))
         .expect("failed to set stdout color");
+}
+
+/// Prints the specified exception in the following format:
+/// ```rustlisp
+/// error(<error_code>): <description>
+/// ```
+/// The initial part before the colon is printed in bold red text, and the
+/// description in bold, uncolored text.
+pub fn print_err(ex: &Exception) {
+    print_err_no_ln(ex);
+    println!("");
 }
 
 /// Prints the specified prompt in bold green text.
@@ -110,4 +115,21 @@ pub fn print_pretty(text: impl AsRef<str>, color: Option<Color>, style: Style) {
     write!(sout, "{}", text.as_ref()).expect("failed to write to stdout");
     sout.set_color(ColorSpec::new().set_fg(None).set_bold(false))
         .expect("failed to set stdout color");
+}
+
+pub fn print_stack_trace(ex: &Exception) {
+
+    let mut sout = StandardStream::stdout(ColorChoice::Always);
+    let stack: Vec<_> = ex.stack().iter().collect();
+    print_err_no_ln(ex);
+    for (i, item) in stack.into_iter().rev().enumerate() {
+        sout.set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(false)).unwrap();
+        write!(sout, "\n at ").unwrap();
+        sout.set_color(ColorSpec::new().set_fg(None).set_bold(true)).unwrap();
+        write!(sout, "[{}]", i).unwrap();
+        sout.set_color(ColorSpec::new().set_fg(None).set_bold(false)).unwrap();
+        write!(sout, " {}", item).unwrap();
+    }
+    write!(sout, "\n").unwrap();
+    clear_color();
 }

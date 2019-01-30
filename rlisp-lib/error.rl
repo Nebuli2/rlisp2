@@ -1,1 +1,1 @@
-(define-struct error [code description])
+(define-struct error [code description stack])

@@ -171,7 +171,9 @@ fn load_functions(ctx: &mut Context) {
 
         "random" => random,
         "current-time" => time_secs,
-        "repeat" => repeat
+        "repeat" => repeat,
+
+        "print-error" => print_error
     }
 
     // Boolean logic

@@ -6,7 +6,7 @@
 //! * `Syntax`
 //! * `Custom`
 
-use crate::{expression::Expression, util::Str};
+use crate::{expression::Expression, util::{Str, set_stdout_color}};
 use im::ConsList;
 use std::fmt;
 
@@ -16,8 +16,8 @@ pub type ErrorCode = u16;
 
 #[derive(Clone, Debug)]
 pub struct Exception {
-    stack: ConsList<Expression>,
-    data: ExceptionData,
+    pub stack: ConsList<Expression>,
+    pub data: ExceptionData,
 }
 
 impl Exception {
@@ -74,16 +74,15 @@ impl Exception {
     pub fn stack(&self) -> ConsList<Expression> {
         self.stack.clone()
     }
+
+    pub fn print_stack_trace(&self) {
+
+    }
 }
 
 impl fmt::Display for Exception {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let stack: Vec<_> = self.stack().iter().collect();
-        write!(f, "{}", self.data)?;
-        for (i, item) in stack.into_iter().rev().enumerate() {
-            write!(f, "\n  [{}] {}", i + 1, item)?;
-        }
-        Ok(())
+        write!(f, "{}", self.data)
     }
 }
 

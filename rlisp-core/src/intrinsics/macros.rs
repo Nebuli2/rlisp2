@@ -391,12 +391,13 @@ pub fn try_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
             if handler.is_callable() {
                 let expr = expr.eval(ctx);
                 if let Error(ex) = expr {
-                    let stack_trace = ex.to_string();
+                    let description = ex.to_string();
                     let expr = Struct(Rc::new(StructData {
                         name: "error".into(),
                         data: vec![
                             (ex.error_code() as f64).into(), // error-code
-                            stack_trace.into(), // error-description
+                            description.into(),              // error-description
+                            Cons(ex.stack().clone())         // error-stack
                         ],
                     }));
                     let handle_list = cons![handler, expr];

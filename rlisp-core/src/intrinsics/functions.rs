@@ -5,9 +5,12 @@
 
 use crate::{
     context::Context,
-    exception::Exception,
-    expression::Callable::{self, *},
-    expression::Expression::{self, *},
+    exception::{ErrorCode, Exception, ExceptionData},
+    expression::{
+        Callable::{self, *},
+        Expression::{self, *},
+        StructData
+    },
     parser::{preprocessor::*, Parser},
     quat::Quat,
     util::{print_pretty, wrap_begin, Style},
@@ -1039,4 +1042,41 @@ pub fn repeat(args: &[Expression], ctx: &mut Context) -> Expression {
         ))),
         xs => Error(Rc::new(Exception::arity(2, xs.len()))),
     }
+}
+
+use crate::util::print_stack_trace;
+
+pub fn print_error(args: &[Expression], ctx: &mut Context) -> Expression {
+    match args {
+        [Struct(data)] => {
+            let StructData { name, data } = data.as_ref();
+            // Check struct type
+            if name.as_ref() == "error" {
+                // Extract components
+                match &data[..] {
+                    [Num(code), Str(description), Cons(stack)] => {
+                        // Create new exception from components
+                        let code = *code as ErrorCode;
+                        let description = description.clone();
+                        let stack = stack.clone();
+                        let data = ExceptionData::Custom(code, description);
+                        let error = Exception { data, stack };
+
+                        // Print the exception
+                        print_stack_trace(&error);
+
+                        Expression::default()
+                    },
+                    [a, b, c] => Error(Rc::new(Exception::signature("(num, str, cons)", format!("({}, {}, {})", a, b, c)))),
+                    xs => Error(Rc::new(Exception::arity(3, xs.len())))
+                }
+            } else {
+                Error(Rc::new(Exception::signature("exception", name.clone())))
+            }
+            
+        },
+        [other] => Error(Rc::new(Exception::signature("error", other.type_of()))),
+        xs => Error(Rc::new(Exception::arity(1, xs.len())))
+    }
+    
 }
