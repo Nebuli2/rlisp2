@@ -9,7 +9,7 @@ use crate::{
     expression::{
         Callable::{self, *},
         Expression::{self, *},
-        StructData
+        StructData,
     },
     parser::{preprocessor::*, Parser},
     quat::Quat,
@@ -1066,17 +1066,39 @@ pub fn print_error(args: &[Expression], ctx: &mut Context) -> Expression {
                         print_stack_trace(&error);
 
                         Expression::default()
-                    },
-                    [a, b, c] => Error(Rc::new(Exception::signature("(num, str, cons)", format!("({}, {}, {})", a, b, c)))),
-                    xs => Error(Rc::new(Exception::arity(3, xs.len())))
+                    }
+                    [a, b, c] => Error(Rc::new(Exception::signature(
+                        "(num, str, cons)",
+                        format!(
+                            "({}, {}, {})",
+                            a.type_of(),
+                            b.type_of(),
+                            c.type_of()
+                        ),
+                    ))),
+                    xs => Error(Rc::new(Exception::arity(3, xs.len()))),
                 }
             } else {
                 Error(Rc::new(Exception::signature("exception", name.clone())))
             }
-            
-        },
-        [other] => Error(Rc::new(Exception::signature("error", other.type_of()))),
-        xs => Error(Rc::new(Exception::arity(1, xs.len())))
+        }
+        [other] => {
+            Error(Rc::new(Exception::signature("error", other.type_of())))
+        }
+        xs => Error(Rc::new(Exception::arity(1, xs.len()))),
     }
-    
+}
+
+use std::env;
+
+pub fn args(args: &[Expression], _: &mut Context) -> Expression {
+    match args.len() {
+        0 => {
+            let arg_strs: ConsList<Expression> = env::args()
+                .map::<Expression, _>(|arg| arg.as_str().into())
+                .collect();
+            Cons(arg_strs)
+        }
+        n => Error(Rc::new(Exception::arity(0, n))),
+    }
 }

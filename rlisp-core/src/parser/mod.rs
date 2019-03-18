@@ -636,7 +636,7 @@ mod tests {
         let input = "\"Hello, world!\"".chars();
         let mut parser = Parser::new(input);
         let found = parser.parse_expr();
-        let expected = Some(Expression::Str("Hello, world!"));
+        let expected = Some(Expression::Str("Hello, world!".into()));
         assert_eq!(&found, &expected);
     }
 }
