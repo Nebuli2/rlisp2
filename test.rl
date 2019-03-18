@@ -13,10 +13,10 @@
   {total-time / times})
 
 (define (main)
-  (define times 50)
-  (define n 20)
+  (define times 10)
+  (define n 10)
   (define fn (lambda () (fibonacci2 n)))
   (define time-per-fn (test times fn))
-  (printfln "time per function: #{time-per-fn}s"))
+  (printfln "time per function: #{time-per-fn} seconds"))
 
 (main)

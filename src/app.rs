@@ -32,6 +32,10 @@ fn create_app<'a>() -> ArgMatches<'a> {
             .takes_value(false)
             .help("Determines whether or not to start an interactive REPL session after loading the specified input")
             .required(false))
+        .arg(Arg::with_name("program_args")
+            .multiple(true)
+            .help("Additional arguments passed to the script")
+            .required(false))
         .get_matches()
 }
 

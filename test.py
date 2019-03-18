@@ -25,7 +25,7 @@ def fib(n):
 def test(times, fn):
     return time_fn(lambda: test_body(times, fn)) / times
 
-body = lambda: fib(30)
+body = lambda: fib(20)
 avg = test(100, body)
 print 'Time per fn: {}s'.format(avg)
     
