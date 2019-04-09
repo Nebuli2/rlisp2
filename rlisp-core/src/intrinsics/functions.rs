@@ -16,7 +16,9 @@ use crate::{
     util::{print_pretty, wrap_begin, Str, Style},
 };
 use im::ConsList;
+use rand::prelude::*;
 use std::{
+    env,
     error::Error,
     fs::File,
     io::{self, prelude::*, stdin, stdout, BufReader},
@@ -1015,7 +1017,6 @@ pub fn ln(args: &[Expression], _: &mut Context) -> Expression {
 }
 
 pub fn env_var(args: &[Expression], _: &mut Context) -> Expression {
-    use std::env;
     match args {
         [Str(s)] => {
             if let Ok(var) = env::var(s.as_ref()) {
@@ -1041,8 +1042,6 @@ pub fn string_concat(args: &[Expression], _: &mut Context) -> Expression {
 
     Str(buf.into())
 }
-
-use rand::prelude::*;
 
 pub fn random(args: &[Expression], ctx: &mut Context) -> Expression {
     match args.len() {
@@ -1143,8 +1142,6 @@ pub fn print_error(args: &[Expression], _: &mut Context) -> Expression {
         xs => Error(Rc::new(Exception::arity(1, xs.len()))),
     }
 }
-
-use std::env;
 
 pub fn args(args: &[Expression], _: &mut Context) -> Expression {
     match args.len() {
