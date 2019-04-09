@@ -1,4 +1,7 @@
+#!/usr/local/bin/python3.7
+
 import time
+import sys
 
 def time_fn(fn):
     start = time.time()
@@ -27,5 +30,7 @@ def test(times, fn):
 
 body = lambda: fib(20)
 avg = test(100, body)
-print 'Time per fn: {}s'.format(avg)
+print('Time per fn: {}s'.format(avg))
+
+print(sys.argv)
     

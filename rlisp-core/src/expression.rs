@@ -2,12 +2,7 @@
 //! relating to expressions within the rlisp language. The function
 //! `Expression::eval` is the heart of the interpreter.
 
-use crate::{
-    context::Context,
-    exception::{self, Exception},
-    quat::Quat,
-    util::Str,
-};
+use crate::{context::Context, exception::Exception, quat::Quat, util::Str};
 use im::ConsList;
 use std::{fmt, rc::Rc};
 
@@ -283,13 +278,13 @@ impl Expression {
                     let res = func.call(list, ctx);
                     match res {
                         Error(ex) => Error(Rc::new(ex.extend(self))),
-                        other => other
+                        other => other,
                     }
                 } else {
-                    Error(Rc::new(Exception::custom(
-                        3,
-                        "no function specified",
-                    ).extend(self)))
+                    Error(Rc::new(
+                        Exception::custom(3, "no function specified")
+                            .extend(self),
+                    ))
                 }
             }
 

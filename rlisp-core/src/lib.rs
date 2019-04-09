@@ -50,6 +50,6 @@ pub mod pattern;
 pub mod prelude {
     pub use crate::{
         context::Context, exception::Exception, expression::Expression,
-        intrinsics::init_context, parser::Parser, util::nil,
+        intrinsics::init_context, intrinsics::init_context_with_version, parser::Parser, util::nil,
     };
 }

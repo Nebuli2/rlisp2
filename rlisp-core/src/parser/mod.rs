@@ -51,8 +51,8 @@ const QUAT_REGEX_STR_ABD: &str =
 const QUAT_REGEX_STR_ACD: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
-const QUAT_REGEX_STR_BCD: &str = 
-    r"([+-]?[0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
+const QUAT_REGEX_STR_BCD: &str =
+  r"([+-]?[0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
 const QUAT_REGEX_STR_B: &str = r"([+-]?[0-9]+(\.[0-9]*)?)i";
 
@@ -99,7 +99,7 @@ where
     I: IntoIterator<Item = char>,
 {
     iter: I::IntoIter,
-    stack: Vec<char>,
+    stack: Vec<char>
 }
 
 #[derive(Debug)]
@@ -266,7 +266,7 @@ where
     pub fn new(iter: I) -> Self {
         Self {
             iter: iter.into_iter(),
-            stack: Vec::new(),
+            stack: Vec::new()
         }
     }
 
@@ -364,19 +364,6 @@ where
         })
     }
 
-    fn parse_quat(&mut self) -> Option<Expression> {
-        // buffer
-        let mut buf = String::new();
-        while let Some(ch) = self.next_char() {
-            if ch.is_whitespace() {
-                break;
-            }
-            buf.push(ch);
-        }
-
-        None
-    }
-
     /// Parses an infix function list. Every other element of the list is
     /// considered to be the first element of the list. As an example:
     /// ```rustlisp
@@ -406,9 +393,9 @@ where
                                     // Ensure that different operators are not used in infix lists
                                     if Some(expr) != op {
                                         return Some(Error(Rc::new(Exception::syntax(
-                                            6,
-                                            "infix list operators must be equal",
-                                        ))));
+                      6,
+                      "infix list operators must be equal",
+                    ))));
                                     }
                                 }
                             } else {

@@ -3,17 +3,9 @@ use crate::{
     expression::Expression::{self, *},
     util::Str,
 };
-use im::ConsList;
 use std::collections::HashMap;
 
 type Matches = HashMap<Str, Expression>;
-
-enum Value {
-    Expression(Expression),
-    Variadic(ConsList<Expression>),
-}
-
-const ELLIPSIS: &str = "...";
 
 pub fn pattern_match(
     syntax: &[Str],

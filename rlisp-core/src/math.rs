@@ -27,12 +27,12 @@ impl Ln for f64 {
     }
 }
 
-use crate::quat::Quat;
+// use crate::quat::Quat;
 
-impl Exp for Quat {
-    type Output = Self;
+// impl Exp for Quat {
+//     type Output = Self;
 
-    fn exp(self) -> Quat {
-        self.exp()
-    }
-}
+//     fn exp(self) -> Quat {
+//         self.exp()
+//     }
+// }

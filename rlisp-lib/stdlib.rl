@@ -24,6 +24,13 @@
     (cond [(empty? xs) nil]
           [else (cons (f (head xs)) (map f (tail xs)))]))
 
+; for-each :: (a -> b) (list a) -> nil
+(define (for-each f xs)
+    (cond [(empty? xs) nil]
+          [else (begin
+            (f (head xs))
+            (for-each f (tail xs)))]))
+
 ; sum :: (list num) -> num
 (define (sum xs)
     (apply + xs))
@@ -45,38 +52,10 @@
 (define (singleton x)
     (cons x nil))
 
-; (define foldr (lambda [f] (lambda [acc] (lambda [xs]
-;     (cond [(empty? xs) xs]
-;           [else (foldr f (f (head xs) acc) (tail xs))])))))
-
-; print :: a -> nil
-(define print display)
-
-; println :: a -> nil
-(define (println s)
-    (display s)
-    (newline))
-
 (define (string-append a b)
     (format "#{a}#{b}"))
 
 (define ++ string-append)
-
-(define (println-debug ex)
-    (display-debug ex)
-    (newline))
-
-; factorial :: num -> num
-(define (factorial n)
-    (product {1 to n}))
-
-; make-point :: num num -> point
-; point-x :: point -> num
-; point-y :: point -> num
-(define-struct point [x y])
-
-; printf :: string -> nil
-(define printf (compose print format))
 
 (define (is-even? n)
     {{n % 2} = 0})

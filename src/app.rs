@@ -2,7 +2,7 @@ use crate::repl::run_repl;
 use clap::{App, Arg, ArgMatches};
 use rlisp_core::{
     expression::Expression::*, intrinsics::functions::import, prelude::*,
-    util::print_err,
+    util::print_stack_trace,
 };
 use std::env;
 
@@ -47,20 +47,21 @@ pub fn run() {
         .map(ToString::to_string)
         .unwrap_or_else(|| format!("{}/loader.rl", rlisp_home()));
 
-    let mut ctx = init_context();
+    let mut ctx = init_context_with_version(env!("CARGO_PKG_VERSION"));
     let res = import(&[Str(lib_loc.into())], &mut ctx);
 
     if let Error(ex) = res {
-        print_err(&ex);
+        print_stack_trace(&ex);
         return;
     }
 
     match matches.value_of("INPUT") {
         Some(input) => {
             // Load input file
+            ctx.remove("__FILE__");
             let res = import(&[Str(input.into())], &mut ctx);
             if let Error(ex) = res {
-                print_err(&ex);
+                print_stack_trace(&ex);
                 return;
             }
 

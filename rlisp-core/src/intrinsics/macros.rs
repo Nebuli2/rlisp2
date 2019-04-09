@@ -38,12 +38,11 @@ fn create_lambda(
                 Some(wrap_begin(body))
             }
             .unwrap_or_default();
-            let capture = body.extract_symbols(ctx);
-            let capture = if capture.is_empty() {
-                None
-            } else {
-                Some(capture)
-            };
+            let mut capture = body.extract_symbols(ctx);
+            if let Some(file) = ctx.get("__FILE__") {
+                capture.insert("__FILE__".into(), file.clone());
+            }
+            let capture = Some(capture);
             Callable(Lambda(Rc::new(LambdaData {
                 params,
                 body: Rc::new(body.clone()),
@@ -396,8 +395,8 @@ pub fn try_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                         name: "error".into(),
                         data: vec![
                             (ex.error_code() as f64).into(), // error-code
-                            description.into(),              // error-description
-                            Cons(ex.stack().clone())         // error-stack
+                            description.into(), // error-description
+                            Cons(ex.stack().clone()), // error-stack
                         ],
                     }));
                     let handle_list = cons![handler, expr];

@@ -186,7 +186,6 @@ mod tests {
     #[test]
     fn power() {
         let i = Quat(std::f64::consts::E, 0.0, 0.0, 0.0);
-        let test = i.pow(i);
         println!("ln(i) = {:?}", i.ln());
         assert!(false);
     }

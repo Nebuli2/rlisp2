@@ -37,3 +37,4 @@
 - `035`: Unknown style
 - `036`: Unknown environment variable
 - `037`: Macro definition must include a name
+- `038`: Division by 0

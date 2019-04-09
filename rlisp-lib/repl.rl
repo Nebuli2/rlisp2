@@ -48,13 +48,9 @@
         print-error)
     (repl))
 
-; version :: -> string
-(define (version)
-    "0.1.1")
-
 ; help :: -> nil
 (define (help)
-    (printfln "Welcome to Rlisp #{(version)}!")
+    (printfln "Welcome to Rlisp #{version}!")
     (println "To interact with the REPL, simply enter an expression after the prompt."))
 
 ; greet :: string -> nil
@@ -63,11 +59,6 @@
     (println "Type `(help)` for more information."))
 
 (define (start-repl)
-    (greet (version))
+    (greet version)
     (repl))
-
-(define-macro-rule (next-month [day month])
-    (if {month = 2}
-        `(,(+ day 1) 1)
-        `(,day ,(+ month 1))))
 

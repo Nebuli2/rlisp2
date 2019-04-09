@@ -7,13 +7,13 @@ use crate::{
     context::Context,
     exception::{ErrorCode, Exception, ExceptionData},
     expression::{
-        Callable::{self, *},
+        Callable::*,
         Expression::{self, *},
         StructData,
     },
     parser::{preprocessor::*, Parser},
     quat::Quat,
-    util::{print_pretty, wrap_begin, Style},
+    util::{print_pretty, wrap_begin, Str, Style},
 };
 use im::ConsList;
 use std::{
@@ -229,19 +229,22 @@ pub fn div(args: &[Expression], _: &mut Context) -> Expression {
         _ => match &args[0] {
             Num(head) => {
                 let tail = &args[1..];
-                let nums: Option<Vec<_>> = tail
+                let nums: Result<Vec<_>, Exception> = tail
                     .iter()
                     .map(|expr| match expr {
-                        Num(n) => Some(*n),
-                        _ => None,
+                        Num(n) if *n == 0.0 => {
+                            Err(Exception::custom(38, "division by 0"))
+                        }
+                        Num(n) => Ok(*n),
+                        other => {
+                            Err(Exception::signature("num", other.type_of()))
+                        }
                     })
                     .collect();
 
-                let res = nums
-                    .map(|nums| nums.into_iter().fold(*head, Div::div))
-                    .unwrap_or_else(|| *head);
-
-                Num(res)
+                nums.map(|nums| nums.into_iter().fold(*head, Div::div))
+                    .map(|num| Num(num))
+                    .unwrap_or_else(|e| Error(Rc::new(e)))
             }
             other => {
                 Error(Rc::new(Exception::signature("num", other.type_of())))
@@ -546,18 +549,18 @@ fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
 
     // Look for directive lines
     let mut use_preprocessor = false;
-    {
-        let iter = buf
-            .lines()
-            .filter(|line| !line.is_empty())
-            .filter(|line| line.trim().starts_with('#'))
-            .map(|line| line.split_at(1).1);
-        for line in iter {
-            if line == "enable-preprocessor" {
-                use_preprocessor = true;
-            } else {
-                Err(format!("{} is not a known preprocessor command", line))?;
-            }
+    let iter = buf
+        .lines()
+        .filter(|line| !line.is_empty())
+        .filter(|line| line.trim().starts_with('#'))
+        .map(|line| line.split_at(1).1);
+    for line in iter {
+        if line.starts_with("!") {
+            continue;
+        } else if line == "enable-preprocessor" {
+            use_preprocessor = true;
+        } else {
+            Err(format!("{} is not a known preprocessor command", line))?;
         }
     }
 
@@ -593,15 +596,67 @@ fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
 ///
 /// Reads, parses, and runs the specified file, returning its result.
 pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
+    fn resolve_file_path(file_name: impl ToString, ctx: &Context) -> Str {
+        let s = file_name.to_string();
+        let file_path =
+            std::fs::canonicalize(std::path::Path::new(&s)).unwrap_or_default();
+        if file_path.is_absolute() || file_path.starts_with("~") {
+            // Absolute path (or relative to home)
+            // We don't need to do anything
+            let new_file = file_path.to_string_lossy().into_owned();
+            new_file.into()
+        } else if file_path.is_relative() {
+            // Relative path
+            let cur_file = ctx.get_cur_file();
+
+            if let Some(cur_file) = cur_file {
+                // Extract path from current file
+                let cur_file = cur_file.to_string();
+                let path = std::path::Path::new(&cur_file);
+                let path = path.with_file_name(&s);
+                let path = std::fs::canonicalize(path).unwrap_or_default();
+                let new_file = path.to_string_lossy().into_owned();
+                new_file.into()
+            } else {
+                // Current file is not defined, default to absolute path
+                let new_file = file_path.to_string_lossy().into_owned();
+                new_file.into()
+            }
+        } else {
+            // We aren't ready for this yet, but it can be for repositories
+            let new_file = file_path.to_string_lossy().into_owned();
+            new_file.into()
+        }
+    }
+
     match args {
         [Str(file_name)] => {
-            let res = load_file(file_name);
-            res.map(|ex| ex.eval(ctx)).unwrap_or_else(|_| {
-                Error(Rc::new(Exception::custom(
-                    14,
-                    format!("could not read file {}", file_name),
-                )))
-            })
+            // Resolve file name relative to current file name
+            let new_file = resolve_file_path(file_name, ctx);
+
+            // Check if we have read the file already
+            if ctx.has_read_file(&new_file) {
+                Expression::default()
+            } else {
+                ctx.add_file(new_file.clone());
+                let res = load_file(&new_file);
+                let prev_file_name = ctx.get_cur_file();
+                ctx.insert("__FILE__", new_file.to_string());
+                let res = res.map(|ex| ex.eval(ctx)).unwrap_or_else(|_| {
+                    Error(Rc::new(Exception::custom(
+                        14,
+                        format!("could not read file {}", file_name),
+                    )))
+                });
+                if let Some(prev) = prev_file_name {
+                    ctx.insert("__FILE__", prev);
+                }
+                if res.is_exception() {
+                    res
+                } else {
+                    Expression::default()
+                }
+            }
         }
         xs => Error(Rc::new(Exception::arity(1, xs.len()))),
     }
@@ -744,9 +799,9 @@ fn format_str(sections: &[StrSection], env: &mut Context) -> Expression {
                     }
                     None => {
                         return Error(Rc::new(Exception::syntax(
-                            31,
-                            "format string must contain expression to interpolate",
-                        )));
+              31,
+              "format string must contain expression to interpolate",
+            )));
                     }
                 }
             }
@@ -781,7 +836,7 @@ pub fn format(args: &[Expression], env: &mut Context) -> Expression {
 pub fn set(args: &[Expression], env: &mut Context) -> Expression {
     match args {
         [Symbol(s), ex] => {
-            if let Some(mut reference) = env.get_mut(s) {
+            if let Some(reference) = env.get_mut(s) {
                 *reference = ex.clone();
                 Expression::default()
             } else {
@@ -1046,7 +1101,7 @@ pub fn repeat(args: &[Expression], ctx: &mut Context) -> Expression {
 
 use crate::util::print_stack_trace;
 
-pub fn print_error(args: &[Expression], ctx: &mut Context) -> Expression {
+pub fn print_error(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Struct(data)] => {
             let StructData { name, data } = data.as_ref();
@@ -1097,8 +1152,26 @@ pub fn args(args: &[Expression], _: &mut Context) -> Expression {
             let arg_strs: ConsList<Expression> = env::args()
                 .map::<Expression, _>(|arg| arg.as_str().into())
                 .collect();
-            Cons(arg_strs)
+            let tail = arg_strs.tail().unwrap_or_default();
+            Cons(tail)
         }
         n => Error(Rc::new(Exception::arity(0, n))),
     }
 }
+
+pub fn floor(args: &[Expression], _: &mut Context) -> Expression {
+    unary_fn(args, f64::floor)
+}
+
+pub fn ceil(args: &[Expression], _: &mut Context) -> Expression {
+    unary_fn(args, f64::ceil)
+}
+
+// fn convert_zero_arity<T>(
+//     f: impl Fn() -> T,
+// ) -> impl Fn(&[Expression], &mut Context) -> Expression
+// where
+//     T: Into<Expression>,
+// {
+//     move |_, _| f().into()
+// }

@@ -2,7 +2,8 @@
 //! evaluation of expressions.
 
 use crate::expression::Expression;
-use std::collections::HashMap;
+use crate::util::Str;
+use std::collections::{HashMap, HashSet};
 
 /// The ID of an rlisp struct type.
 type StructId = usize;
@@ -31,6 +32,7 @@ pub struct Context {
     scopes: Vec<Scope>,
     struct_count: usize,
     rng: ThreadRng,
+    read_files: HashSet<Str>,
 }
 
 impl Default for Context {
@@ -46,6 +48,7 @@ impl Context {
             scopes: vec![Scope::default()],
             struct_count: 0,
             rng: thread_rng(),
+            read_files: HashSet::new(),
         }
     }
 
@@ -74,11 +77,15 @@ impl Context {
     }
 
     /// Inserts the specified value into the `Context` at the current scope.
-    pub fn insert(&mut self, ident: impl ToString, value: Expression) {
+    pub fn insert(
+        &mut self,
+        ident: impl ToString,
+        value: impl Into<Expression>,
+    ) {
         let ident = ident.to_string();
         self.scopes
             .last_mut()
-            .map(|scope| scope.bindings.insert(ident, value));
+            .map(|scope| scope.bindings.insert(ident, value.into()));
     }
 
     pub fn remove(&mut self, ident: impl AsRef<str>) {
@@ -121,5 +128,24 @@ impl Context {
     /// Descends one level of scope, dropping all values in the dropped scopes.
     pub fn descend_scope(&mut self) {
         self.scopes.pop();
+    }
+
+    pub fn get_cur_file(&self) -> Option<Str> {
+        self.get("__FILE__").and_then(|ex| match ex {
+            Expression::Str(s) => Some(s.clone()),
+            _ => None,
+        })
+    }
+
+    pub fn add_file(&mut self, file_name: Str) {
+        self.read_files.insert(file_name);
+    }
+
+    pub fn remove_file(&mut self, file_name: &Str) {
+        self.read_files.remove(file_name);
+    }
+
+    pub fn has_read_file(&self, file_name: &Str) -> bool {
+        self.read_files.contains(file_name)
     }
 }

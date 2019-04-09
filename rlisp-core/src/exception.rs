@@ -6,7 +6,7 @@
 //! * `Syntax`
 //! * `Custom`
 
-use crate::{expression::Expression, util::{Str, set_stdout_color}};
+use crate::{expression::Expression, util::Str};
 use im::ConsList;
 use std::fmt;
 
@@ -75,9 +75,7 @@ impl Exception {
         self.stack.clone()
     }
 
-    pub fn print_stack_trace(&self) {
-
-    }
+    pub fn print_stack_trace(&self) {}
 }
 
 impl fmt::Display for Exception {

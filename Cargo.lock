@@ -198,7 +198,7 @@ dependencies = [
 
 [[package]]
 name = "rlisp"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlisp-core 0.1.0",
