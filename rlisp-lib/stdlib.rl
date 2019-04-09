@@ -129,3 +129,12 @@
     (action)
     (define stop (current-time))
     (- stop start))
+
+(define (length xs)
+    (cond [(empty? xs) 0]
+          [else (+ 1 (length (tail xs)))]))
+
+(define (nth n xs)
+    (cond [(empty? xs) nil]
+          [(= n 0) (head xs)]
+          [else (nth (- n 1) (tali xs))]))
