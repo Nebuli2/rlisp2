@@ -137,4 +137,4 @@
 (define (nth n xs)
     (cond [(empty? xs) nil]
           [(= n 0) (head xs)]
-          [else (nth (- n 1) (tali xs))]))
+          [else (nth (- n 1) (tail xs))]))
