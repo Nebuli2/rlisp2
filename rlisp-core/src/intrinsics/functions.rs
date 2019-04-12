@@ -20,6 +20,7 @@ use rand::prelude::*;
 use std::{
     env,
     error::Error,
+    path::Path,
     fs::File,
     io::{self, prelude::*, stdin, stdout, BufReader},
     ops::{Add, Div, Mul, Rem, Sub},
@@ -598,10 +599,23 @@ fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
 ///
 /// Reads, parses, and runs the specified file, returning its result.
 pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
+
+    #[cfg(target_os = "windows")]
+    fn clean_file_path(path: impl AsRef<str>) -> String {
+        let path = path.as_ref();
+        path.replace("/", "\\")
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn clean_file_path(path: impl AsRef<str>) -> String {
+        path.as_ref().to_string()
+    }
+
     fn resolve_file_path(file_name: impl ToString, ctx: &Context) -> Str {
-        let s = file_name.to_string();
-        let file_path =
-            std::fs::canonicalize(std::path::Path::new(&s)).unwrap_or_default();
+        let file_name = file_name.to_string();
+        let file_name = clean_file_path(file_name);
+        let path = std::path::Path::new(&file_name);
+        let file_path = Path::new(&file_name);
         if file_path.is_absolute() || file_path.starts_with("~") {
             // Absolute path (or relative to home)
             // We don't need to do anything
@@ -615,7 +629,8 @@ pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
                 // Extract path from current file
                 let cur_file = cur_file.to_string();
                 let path = std::path::Path::new(&cur_file);
-                let path = path.with_file_name(&s);
+
+                let path = path.with_file_name(&file_name);
                 let path = std::fs::canonicalize(path).unwrap_or_default();
                 let new_file = path.to_string_lossy().into_owned();
                 new_file.into()
@@ -634,20 +649,20 @@ pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
     match args {
         [Str(file_name)] => {
             // Resolve file name relative to current file name
-            let new_file = resolve_file_path(file_name, ctx);
+            let new_file_name = resolve_file_path(file_name, ctx);
 
             // Check if we have read the file already
-            if ctx.has_read_file(&new_file) {
+            if ctx.has_read_file(&new_file_name) {
                 Expression::default()
             } else {
-                ctx.add_file(new_file.clone());
-                let res = load_file(&new_file);
+                ctx.add_file(new_file_name.clone());
+                let res = load_file(&new_file_name);
                 let prev_file_name = ctx.get_cur_file();
-                ctx.insert("__FILE__", new_file.to_string());
+                ctx.insert("__FILE__", new_file_name.to_string());
                 let res = res.map(|ex| ex.eval(ctx)).unwrap_or_else(|_| {
                     Error(Rc::new(Exception::custom(
                         14,
-                        format!("could not read file {}", file_name),
+                        format!("could not read file: {}", file_name),
                     )))
                 });
                 if let Some(prev) = prev_file_name {
@@ -985,10 +1000,10 @@ pub fn display_pretty(args: &[Expression], _: &mut Context) -> Expression {
 pub fn quaternion(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Num(a), Num(b), Num(c), Num(d)] => Quaternion(Rc::new(Quat(
-            a.clone(),
-            b.clone(),
-            c.clone(),
-            d.clone(),
+            *a,
+            *b,
+            *c,
+            *d,
         ))),
         [a, b, c, d] => Error(Rc::new(Exception::signature(
             "(num, num, num, num)",

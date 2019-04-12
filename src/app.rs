@@ -5,6 +5,7 @@ use rlisp_core::{
     util::print_stack_trace,
 };
 use std::env;
+use std::path::Path;
 
 fn rlisp_home() -> String {
     env::var("RLISP_HOME").expect("RLISP_HOME not defined")
@@ -45,7 +46,12 @@ pub fn run() {
     let lib_loc = matches
         .value_of("lib-loc")
         .map(ToString::to_string)
-        .unwrap_or_else(|| format!("{}/loader.rl", rlisp_home()));
+        .unwrap_or_else(|| {
+            let home_path = rlisp_home();
+            let mut home_path = Path::new(&home_path).to_path_buf();
+            home_path.push("loader.rl");
+            home_path.into_os_string().into_string().unwrap()
+        });
 
     let mut ctx = init_context_with_version(env!("CARGO_PKG_VERSION"));
     let res = import(&[Str(lib_loc.into())], &mut ctx);
