@@ -262,17 +262,6 @@ lazy_static! {
         .expect("quaternion regex failed to compile");
 }
 
-/// Stores information regarding the current state of the parser, in particular
-/// its progress within whatever it is parsing, and a stack of characters to be
-/// re-read.
-pub struct Parser<I>
-where
-    I: IntoIterator<Item = char>,
-{
-    iter: I::IntoIter,
-    stack: Vec<char>
-}
-
 #[derive(Debug)]
 pub struct ParseQuatError;
 

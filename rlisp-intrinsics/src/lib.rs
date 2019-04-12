@@ -1,12 +1,9 @@
 //! This module provides access to intrinsic functions of the interpreter.
-#[macro_use]
-extern crate rlisp_interpreter;
 
 use rlisp_interpreter::{
     context::Context,
     expression::{Callable, Expression},
     im::ConsList,
-    util::*,
 };
 use std::rc::Rc;
 
