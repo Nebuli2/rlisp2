@@ -138,3 +138,8 @@
     (cond [(empty? xs) nil]
           [(= n 0) (head xs)]
           [else (nth (- n 1) (tail xs))]))
+
+(define (zip xs ys)
+    (cond [(empty? xs) nil]
+          [(empty? ys) nil]
+          [else (cons `[,(head xs) ,(head ys)] (zip (tail xs) (tail ys)))]))

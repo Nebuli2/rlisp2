@@ -182,7 +182,7 @@ fn load_functions(ctx: &mut Context) {
 
         "print-error" => print_error,
 
-        "args" => args
+        "args" => args,
     }
 
     // Boolean logic

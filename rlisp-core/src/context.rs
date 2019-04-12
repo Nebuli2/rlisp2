@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 type StructId = usize;
 
 /// An individual scope in the evaluation context.
+#[derive(Debug)]
 struct Scope {
     bindings: HashMap<String, Expression>,
     structs: HashMap<String, StructId>,
@@ -28,6 +29,7 @@ use rand::prelude::*;
 /// Represents the evaluation context for use during the evaluation of rlisp
 /// expressions. It provides a means of accessing stored variables and
 /// information about custom struct types.
+#[derive(Debug)]
 pub struct Context {
     scopes: Vec<Scope>,
     struct_count: usize,
