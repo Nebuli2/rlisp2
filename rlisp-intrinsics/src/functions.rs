@@ -2,8 +2,7 @@
 //! intrinsic function is one where all of its parameters are evaluated, and
 //! then the intrinsic function is provided the evaluated arguments to produce
 //! its output.
-
-use crate::{
+use rlisp_interpreter::{
     context::Context,
     exception::{ErrorCode, Exception, ExceptionData},
     expression::{
@@ -11,22 +10,22 @@ use crate::{
         Expression::{self, *},
         StructData,
     },
-    parser::{preprocessor::*, Parser},
+    im::ConsList,
     quat::Quat,
-    util::{print_pretty, wrap_begin, Str, Style},
+    rand::prelude::*,
+    termcolor::Color,
+    util::{print_pretty, print_stack_trace, wrap_begin, Str, Style},
 };
-use im::ConsList;
-use rand::prelude::*;
+use rlisp_parser::{preprocessor::*, Parser};
 use std::{
     env,
     error::Error,
-    path::Path,
     fs::File,
     io::{self, prelude::*, stdin, stdout, BufReader},
     ops::{Add, Div, Mul, Rem, Sub},
+    path::Path,
     rc::Rc,
 };
-use termcolor::Color;
 
 /// Evaluates the specified unary function, checking arity and type signatures.
 fn unary_fn(args: &[Expression], f: impl Fn(f64) -> f64) -> Expression {
@@ -599,7 +598,6 @@ fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
 ///
 /// Reads, parses, and runs the specified file, returning its result.
 pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
-
     #[cfg(target_os = "windows")]
     fn clean_file_path(path: impl AsRef<str>) -> String {
         let path = path.as_ref();
@@ -614,7 +612,6 @@ pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
     fn resolve_file_path(file_name: impl ToString, ctx: &Context) -> Str {
         let file_name = file_name.to_string();
         let file_name = clean_file_path(file_name);
-        let path = std::path::Path::new(&file_name);
         let file_path = Path::new(&file_name);
         if file_path.is_absolute() || file_path.starts_with("~") {
             // Absolute path (or relative to home)
@@ -697,7 +694,7 @@ pub fn readline(args: &[Expression], _: &mut Context) -> Expression {
 }
 
 fn quote(expr: Expression) -> Expression {
-    let list = cons![Callable(Quote), expr];
+    let list = ConsList::from(vec![Callable(Quote), expr]);
     Cons(list)
 }
 
@@ -999,12 +996,9 @@ pub fn display_pretty(args: &[Expression], _: &mut Context) -> Expression {
 /// `quaternion :: num num num num -> quaternion`
 pub fn quaternion(args: &[Expression], _: &mut Context) -> Expression {
     match args {
-        [Num(a), Num(b), Num(c), Num(d)] => Quaternion(Rc::new(Quat(
-            *a,
-            *b,
-            *c,
-            *d,
-        ))),
+        [Num(a), Num(b), Num(c), Num(d)] => {
+            Quaternion(Rc::new(Quat(*a, *b, *c, *d)))
+        }
         [a, b, c, d] => Error(Rc::new(Exception::signature(
             "(num, num, num, num)",
             format!("({}, {}, {}, {})", a, b, c, d),
@@ -1112,8 +1106,6 @@ pub fn repeat(args: &[Expression], ctx: &mut Context) -> Expression {
         xs => Error(Rc::new(Exception::arity(2, xs.len()))),
     }
 }
-
-use crate::util::print_stack_trace;
 
 pub fn print_error(args: &[Expression], _: &mut Context) -> Expression {
     match args {

@@ -1,10 +1,13 @@
 //! This module provides access to intrinsic functions of the interpreter.
+#[macro_use]
+extern crate rlisp_interpreter;
 
-use crate::{
+use rlisp_interpreter::{
     context::Context,
     expression::{Callable, Expression},
+    im::ConsList,
+    util::*,
 };
-use im::ConsList;
 use std::rc::Rc;
 
 pub mod functions;
@@ -20,8 +23,8 @@ pub fn init_context_with_version(version: &'static str) -> Context {
     ctx
 }
 
-pub fn init_context() {
-    init_context_with_version(env!("CARGO_PKG_VERSION"));
+pub fn init_context() -> Context {
+    init_context_with_version(env!("CARGO_PKG_VERSION"))
 }
 
 fn define_intrinsic(

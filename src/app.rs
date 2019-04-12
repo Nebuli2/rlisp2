@@ -1,11 +1,10 @@
 use crate::repl::run_repl;
 use clap::{App, Arg, ArgMatches};
-use rlisp_core::{
-    expression::Expression::*, intrinsics::functions::import, prelude::*,
-    util::print_stack_trace,
-};
 use std::env;
 use std::path::Path;
+
+use rlisp_interpreter::{expression::Expression::*, util::print_stack_trace};
+use rlisp_intrinsics::{functions::import, init_context};
 
 fn rlisp_home() -> String {
     env::var("RLISP_HOME").expect("RLISP_HOME not defined")
@@ -53,7 +52,7 @@ pub fn run() {
             home_path.into_os_string().into_string().unwrap()
         });
 
-    let mut ctx = init_context_with_version(env!("CARGO_PKG_VERSION"));
+    let mut ctx = init_context();
     let res = import(&[Str(lib_loc.into())], &mut ctx);
 
     if let Error(ex) = res {

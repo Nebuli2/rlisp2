@@ -1,5 +1,3 @@
-(define RLISP_HOME (env-var "RLISP_HOME"))
-
 (import "./stdlib.rl")
 (import "./stdio.rl")
 (import "./repl.rl")

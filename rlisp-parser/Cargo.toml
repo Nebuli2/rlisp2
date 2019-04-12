@@ -1,0 +1,8 @@
+[package]
+name = "rlisp-parser"
+version = "0.1.0"
+authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rlisp-interpreter = { path = "../rlisp-interpreter" }

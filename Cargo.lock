@@ -198,14 +198,16 @@ dependencies = [
 
 [[package]]
 name = "rlisp"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rlisp-core 0.1.0",
+ "rlisp-interpreter 0.1.0",
+ "rlisp-intrinsics 0.1.0",
+ "rlisp-parser 0.1.0",
 ]
 
 [[package]]
-name = "rlisp-core"
+name = "rlisp-interpreter"
 version = "0.1.0"
 dependencies = [
  "im 10.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -213,7 +215,23 @@ dependencies = [
  "rand 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "termcolor 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rlisp-intrinsics"
+version = "0.1.0"
+dependencies = [
+ "rand 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rlisp-interpreter 0.1.0",
+ "rlisp-parser 0.1.0",
  "time 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rlisp-parser"
+version = "0.1.0"
+dependencies = [
+ "rlisp-interpreter 0.1.0",
 ]
 
 [[package]]

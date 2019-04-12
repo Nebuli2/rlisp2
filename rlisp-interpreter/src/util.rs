@@ -9,6 +9,7 @@ use im::ConsList;
 use std::{io::prelude::*, rc::Rc};
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
+#[macro_export]
 macro_rules! cons {
     [$($ex:expr),*] => ({
         use im::ConsList;

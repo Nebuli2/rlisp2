@@ -1,5 +1,5 @@
 [package]
-name = "rlisp-core"
+name = "rlisp-interpreter"
 version = "0.1.0"
 authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
 edition = "2018"
@@ -7,7 +7,6 @@ edition = "2018"
 [dependencies]
 im = "10.2.0"
 termcolor = "0.3.6"
+rand = "0.6"
 regex = "1"
 lazy_static = "1.2"
-rand = "0.6"
-time = "0.1"

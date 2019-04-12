@@ -1,6 +1,11 @@
-use rlisp_core::expression::Expression::*;
-use rlisp_core::prelude::*;
-use rlisp_core::util::print_stack_trace;
+// use rlisp_core::expression::Expression::*;
+// use rlisp_core::prelude::*;
+// use rlisp_core::util::print_stack_trace;
+
+use rlisp_interpreter::{
+    context::Context, expression::Expression::*, util::print_stack_trace,
+};
+use rlisp_parser::Parser;
 
 const REPL: &str = r#"
     (interactive-start)

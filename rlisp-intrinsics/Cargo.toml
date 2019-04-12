@@ -1,0 +1,11 @@
+[package]
+name = "rlisp-intrinsics"
+version = "0.1.0"
+authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rlisp-interpreter = { path = "../rlisp-interpreter" }
+rlisp-parser = { path = "../rlisp-parser" }
+rand = "0.6"
+time = "0.1"

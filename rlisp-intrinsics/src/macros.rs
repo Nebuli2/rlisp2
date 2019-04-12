@@ -2,7 +2,7 @@
 //! macro is a function that acts on unevaluated arguments. This gives the
 //! macro reign to do whatever it will with the arguments.
 
-use crate::{
+use rlisp_interpreter::{
     context::Context,
     exception::Exception,
     expression::{
@@ -10,10 +10,10 @@ use crate::{
         Expression::{self, *},
         LambdaData, StructData, ValidIdentifier,
     },
+    im::ConsList,
     pattern::{pattern_match, replace_symbols},
     util::{nil, wrap_begin, Str},
 };
-use im::ConsList;
 use std::rc::Rc;
 
 /// Creates a lambda with the specified parameters and body, capturing
@@ -399,7 +399,7 @@ pub fn try_expr(list: ConsList<Expression>, ctx: &mut Context) -> Expression {
                             Cons(ex.stack().clone()), // error-stack
                         ],
                     }));
-                    let handle_list = cons![handler, expr];
+                    let handle_list = ConsList::from(vec![handler, expr]);
                     Cons(handle_list).eval(ctx)
                 } else {
                     expr
@@ -593,8 +593,8 @@ pub fn begin(list: ConsList<Expression>, env: &mut Context) -> Expression {
 
 macro_rules! check_arity {
     ($expected:expr, $found:expr) => {{
-        use $crate::exception::Exception;
-        use $crate::expression::Expression::Error;
+        use rlisp_interpreter::exception::Exception;
+        use rlisp_interpreter::expression::Expression::Error;
 
         if $found != $expected {
             return Error(Rc::new(Exception::arity($expected, $found)));
