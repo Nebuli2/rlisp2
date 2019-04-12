@@ -192,43 +192,57 @@ mod tests {
     }
 }
 
+/// Represents a quaternion in the form a + b*i + c*j + d*k.
 const QUAT_REGEX_STR_ABCD: &str = 
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
+/// Represents a quaternion in the form a + b*i.
 const QUAT_REGEX_STR_AB: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)i";
 
+/// Represents a quaternion in the form a + c*j.
 const QUAT_REGEX_STR_AC: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)j";
 
+/// Represents a quaternion in the form a + d*k.
 const QUAT_REGEX_STR_AD: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)k";
 
+/// Represents a quaternion in the form b*i + c*j.
 const QUAT_REGEX_STR_BC: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)j";
 
+/// Represents a quaternion in the form b*i + d*k.
 const QUAT_REGEX_STR_BD: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)k";
 
+/// Represents a quaternion in the form c*j + d*k.
 const QUAT_REGEX_STR_CD: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
+/// Represents a quaternion in the form a + b*i + c*j.
 const QUAT_REGEX_STR_ABC: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)i([+-][0-9]*(\.[0-9]*)?)j";
 
+/// Represents a quaternion in the form a + b*i + d*k.
 const QUAT_REGEX_STR_ABD: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)i([+-][0-9]*(\.[0-9]*)?)k";
 
+/// Represents a quaternion in the form a + c*j + d*k.
 const QUAT_REGEX_STR_ACD: &str =
     r"([+-]?[0-9]+(\.[0-9]*)?)([+-][0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
+/// Represents a quaternion in the form b*i + c*j + d*k.
 const QUAT_REGEX_STR_BCD: &str =
   r"([+-]?[0-9]+(\.[0-9]*)?)i([+-][0-9]+(\.[0-9]*)?)j([+-][0-9]+(\.[0-9]*)?)k";
 
+/// Represents a quaternion in the form b*i.
 const QUAT_REGEX_STR_B: &str = r"([+-]?[0-9]+(\.[0-9]*)?)i";
 
+/// Represents a quaternion in the form c*j.
 const QUAT_REGEX_STR_C: &str = r"([+-]?[0-9]+(\.[0-9]*)?)j";
 
+/// Represents a quaternion in the form d*k.
 const QUAT_REGEX_STR_D: &str = r"([+-]?[0-9]+(\.[0-9]*)?)k";
 
 lazy_static! {
