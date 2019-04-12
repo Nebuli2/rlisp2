@@ -11,17 +11,13 @@ pub mod functions;
 pub mod macros;
 
 /// Creates a context and loads all intrinsic functions and macros into it.
-pub fn init_context_with_version(version: &'static str) -> Context {
+pub fn init_context(version: &'static str) -> Context {
     let mut ctx = Context::new();
     load_functions(&mut ctx);
     load_macros(&mut ctx);
     ctx.insert("pi", std::f64::consts::PI);
     ctx.insert("version", version);
     ctx
-}
-
-pub fn init_context() -> Context {
-    init_context_with_version(env!("CARGO_PKG_VERSION"))
 }
 
 fn define_intrinsic(

@@ -52,7 +52,7 @@ pub fn run() {
             home_path.into_os_string().into_string().unwrap()
         });
 
-    let mut ctx = init_context();
+    let mut ctx = init_context(env!("CARGO_PKG_VERSION"));
     let res = import(&[Str(lib_loc.into())], &mut ctx);
 
     if let Error(ex) = res {
