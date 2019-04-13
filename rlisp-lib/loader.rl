@@ -4,6 +4,7 @@
 (import "./error.rl")
 (import "./array.rl")
 (import "./macros.rl")
+(import "./cli.rl")
 
 ; Define interactive entry point
 (define interactive-start start-repl)

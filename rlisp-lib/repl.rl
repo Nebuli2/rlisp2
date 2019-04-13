@@ -1,5 +1,5 @@
 ; PROMPT :: string
-(define PROMPT "rlisp> ")
+(define PROMPT ">>> ")
 
 ; _ :: any
 ; Represents the last expression evaluated by the REPL.
@@ -32,7 +32,7 @@
 ; Prints the specified text in bold, green text. The text is not followed by a
 ; newline.
 (define (prompt text)
-    (display-pretty 'green 'bold text)
+    (display-pretty 'none 'normal text)
     (flush-stdout))
 
 ; repl :: -> nil
