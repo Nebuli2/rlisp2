@@ -659,10 +659,14 @@ pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
                 let res = load_file(&new_file_name);
                 let prev_file_name = ctx.get_cur_file();
                 ctx.insert("__FILE__", new_file_name.to_string());
-                let res = res.map(|ex| ex.eval(ctx)).unwrap_or_else(|_| {
+                let res = res.map(|ex| ex.eval(ctx)).unwrap_or_else(|e| {
                     Error(Rc::new(Exception::custom(
                         14,
-                        format!("could not read file: {}", file_name),
+                        format!(
+                            "could not read file: \"{}\", reason: {}",
+                            file_name,
+                            e.to_string().to_lowercase()
+                        ),
                     )))
                 });
                 if let Some(prev) = prev_file_name {
