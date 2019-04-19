@@ -1,4 +1,4 @@
 pub mod prelude {
-    pub use app::*;
-    pub use repl::*;
+    pub use crate::app::*;
+    pub use crate::repl::*;
 }
