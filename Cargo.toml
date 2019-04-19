@@ -4,7 +4,7 @@ members = ["rlisp-parser", "rlisp-intrinsics", "rlisp-interpreter"]
 
 [package]
 name = "rlisp"
-version = "0.2.4"
+version = "0.2.5"
 authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
 description = "A simple Lisp interpreter made in Rust, loosely based on Scheme"
 edition = "2018"
