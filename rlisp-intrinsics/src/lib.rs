@@ -171,14 +171,18 @@ fn load_functions(ctx: &mut Context) {
         "env-var" => env_var,
 
         "string-concat" => string_concat,
-
-        "random" => random,
         "current-time" => time_secs,
         "repeat" => repeat,
 
         "print-error" => print_error,
 
         "args" => args,
+    }
+
+    #[cfg(feature = "enable_rand")]
+    define_intrinsics! {
+        context: ctx,
+        "random" => random
     }
 
     // Boolean logic

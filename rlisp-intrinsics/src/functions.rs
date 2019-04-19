@@ -12,10 +12,13 @@ use rlisp_interpreter::{
     },
     im::ConsList,
     quat::Quat,
-    rand::prelude::*,
     termcolor::Color,
     util::{print_pretty, print_stack_trace, wrap_begin, Str, Style},
 };
+
+#[cfg(feature = "enable_rand")]
+use rlisp_interpreter::rand::prelude::*;
+
 use rlisp_parser::{preprocessor::*, Parser};
 use std::{
     env,
@@ -1052,6 +1055,7 @@ pub fn string_concat(args: &[Expression], _: &mut Context) -> Expression {
     Str(buf.into())
 }
 
+#[cfg(feature = "enable_rand")]
 pub fn random(args: &[Expression], ctx: &mut Context) -> Expression {
     match args.len() {
         0 => {

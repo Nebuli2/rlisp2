@@ -5,6 +5,9 @@ use crate::expression::Expression;
 use crate::util::Str;
 use std::collections::{HashMap, HashSet};
 
+#[cfg(feature = "enable_rand")]
+use rand::prelude::*;
+
 /// The ID of an rlisp struct type.
 type StructId = usize;
 
@@ -24,8 +27,6 @@ impl Default for Scope {
     }
 }
 
-use rand::prelude::*;
-
 /// Represents the evaluation context for use during the evaluation of rlisp
 /// expressions. It provides a means of accessing stored variables and
 /// information about custom struct types.
@@ -33,7 +34,10 @@ use rand::prelude::*;
 pub struct Context {
     scopes: Vec<Scope>,
     struct_count: usize,
+
+    #[cfg(feature = "enable_rand")]
     rng: ThreadRng,
+
     read_files: HashSet<Str>,
 }
 
@@ -49,11 +53,15 @@ impl Context {
         Context {
             scopes: vec![Scope::default()],
             struct_count: 0,
+
+            #[cfg(feature = "enable_rand")]
             rng: thread_rng(),
+
             read_files: HashSet::new(),
         }
     }
 
+    #[cfg(feature = "enable_rand")]
     pub fn rng(&mut self) -> &mut impl Rng {
         &mut self.rng
     }

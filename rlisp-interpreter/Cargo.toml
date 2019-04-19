@@ -4,9 +4,13 @@ version = "0.1.0"
 authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
 edition = "2018"
 
+[features]
+default = []
+enable_rand = ["rand"]
+
 [dependencies]
 im = "10.2.0"
 termcolor = "0.3.6"
-rand = "0.6"
+rand = { version = "0.6", optional = true }
 regex = "1"
 lazy_static = "1.2"

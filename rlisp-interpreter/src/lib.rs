@@ -9,5 +9,8 @@ pub mod quat;
 pub mod util;
 
 pub extern crate im;
+
+#[cfg(feature = "enable_rand")]
 pub extern crate rand;
+
 pub extern crate termcolor;
