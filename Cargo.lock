@@ -881,11 +881,11 @@ dependencies = [
 
 [[package]]
 name = "rlisp"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlisp-interpreter 0.1.1",
- "rlisp-intrinsics 0.1.1",
+ "rlisp-intrinsics 0.1.2",
  "rlisp-parser 0.1.0",
 ]
 
@@ -902,7 +902,7 @@ dependencies = [
 
 [[package]]
 name = "rlisp-intrinsics"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "reqwest 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlisp-interpreter 0.1.1",

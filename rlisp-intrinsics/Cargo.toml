@@ -1,6 +1,6 @@
 [package]
 name = "rlisp-intrinsics"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
 edition = "2018"
 
