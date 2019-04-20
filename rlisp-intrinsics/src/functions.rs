@@ -16,7 +16,7 @@ use rlisp_interpreter::{
     util::{print_pretty, print_stack_trace, wrap_begin, Str, Style},
 };
 
-use reqwest::{get, Url};
+use http_request::request;
 
 #[cfg(feature = "enable_rand")]
 use rlisp_interpreter::rand::prelude::*;
@@ -604,29 +604,35 @@ fn load_path(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
 }
 use std::error::Error as StdError;
 
-fn load_http(url: &Url) -> Result<Expression, Box<dyn StdError>> {
-    let mut res = get(url.clone())?;
-    let text = res.text()?;
+fn load_http(url: impl AsRef<str>) -> Result<Expression, Box<dyn StdError>> {
+    let text = request(url)?;
     load_file(text)
 }
 
 pub fn read_http(args: &[Expression], _: &mut Context) -> Expression {
-    fn request_http(url: impl AsRef<str>) -> Result<String, Box<dyn StdError>> {
-        let url = Url::parse(url.as_ref())?;
-        let mut res = get(url)?;
-        let text = res.text()?;
-        Ok(text)
-    }
-
     match args {
         [Str(s)] => {
             // .. Do stuff
-            request_http(s).map(|s| s.into()).unwrap_or_else(|e| {
+            request(s).map(|s| s.into()).unwrap_or_else(|e| {
                 Error(Rc::new(Exception::custom(99, e.to_string())))
             })
         }
         [x] => Error(Rc::new(Exception::signature("str", x.type_of()))),
         xs => Error(Rc::new(Exception::arity(1, xs.len()))),
+    }
+}
+
+trait IsUrl {
+    fn is_url(&self) -> bool;
+}
+
+impl<T> IsUrl for T
+where
+    T: AsRef<str>,
+{
+    fn is_url(&self) -> bool {
+        let s = self.as_ref();
+        s.starts_with("http://") || s.starts_with("https://")
     }
 }
 
@@ -646,21 +652,21 @@ pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
 
     #[derive(Debug)]
     enum ResolvedFile {
-        Url(Url),
+        Url(Str),
         Path(Str),
     }
 
     impl ResolvedFile {
         fn as_str(&self) -> &str {
             match self {
-                ResolvedFile::Url(url) => url.as_str(),
+                ResolvedFile::Url(url) => url.as_ref(),
                 ResolvedFile::Path(path) => path.as_ref(),
             }
         }
 
         fn to_str(&self) -> Str {
             match self {
-                ResolvedFile::Url(url) => url.as_str().into(),
+                ResolvedFile::Url(url) => url.clone(),
                 ResolvedFile::Path(path) => path.clone(),
             }
         }
@@ -674,18 +680,16 @@ pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
         let file_name = file_name.to_string();
         // let file_name = clean_file_path(file_name);
         let file_path = Path::new(&file_name);
+        let file_path_str = file_path.to_string_lossy();
         if file_path.is_absolute()
-            || file_path.starts_with("~")
-            || file_path.starts_with("http://")
-            || file_path.starts_with("https://")
+            || file_path_str.starts_with("~")
+            || file_path_str.is_url()
         {
             // Absolute path (or relative to home)
             // We don't need to do anything
             // Check if http or local file
-            if let Ok(url) =
-                Url::parse(file_path.as_os_str().to_string_lossy().as_ref())
-            {
-                ResolvedFile::Url(url)
+            if file_path_str.is_url() {
+                ResolvedFile::Url(file_path_str.as_ref().into())
             } else {
                 let path = std::fs::canonicalize(file_path).unwrap_or_default();
                 let new_file = path.to_string_lossy().into_owned();
@@ -706,10 +710,11 @@ pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
                     &file_name
                 };
                 let path = path.with_file_name(local_file_name);
+                let path_str = path.to_string_lossy();
 
                 // Check if it is now a url or not
-                if let Ok(url) = Url::parse(path.to_string_lossy().as_ref()) {
-                    ResolvedFile::Url(url)
+                if path_str.is_url() {
+                    ResolvedFile::Url(path_str.as_ref().into())
                 } else {
                     let path = std::fs::canonicalize(path).unwrap_or_default();
                     let new_file = path.to_string_lossy().into_owned();
