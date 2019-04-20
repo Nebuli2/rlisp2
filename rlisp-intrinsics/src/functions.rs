@@ -16,6 +16,8 @@ use rlisp_interpreter::{
     util::{print_pretty, print_stack_trace, wrap_begin, Str, Style},
 };
 
+use reqwest::{get, Url};
+
 #[cfg(feature = "enable_rand")]
 use rlisp_interpreter::rand::prelude::*;
 
@@ -542,19 +544,10 @@ pub fn readfile(args: &[Expression], _: &mut Context) -> Expression {
     }
 }
 
-/// Attempts to read and parse the specified file, using the preprocessor as
-/// needed.
-fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
-    let file = File::open(file_name.as_ref())?;
-    let mut reader = BufReader::new(file);
-
-    let mut buf = String::new();
-
-    reader.read_to_string(&mut buf)?;
-
+fn load_file(file: String) -> Result<Expression, Box<dyn StdError>> {
     // Look for directive lines
     let mut use_preprocessor = false;
-    let iter = buf
+    let iter = file
         .lines()
         .filter(|line| !line.is_empty())
         .filter(|line| line.trim().starts_with('#'))
@@ -569,7 +562,7 @@ fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
         }
     }
 
-    let removed_commands: String = buf
+    let removed_commands: String = file
         .lines()
         .filter(|line| !line.trim().starts_with('#'))
         .collect::<Vec<_>>()
@@ -597,52 +590,140 @@ fn load_file(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
     Ok(expr)
 }
 
+/// Attempts to read and parse the specified file, using the preprocessor as
+/// needed.
+fn load_path(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
+    let file = File::open(file_name.as_ref())?;
+    let mut reader = BufReader::new(file);
+
+    let mut buf = String::new();
+
+    reader.read_to_string(&mut buf)?;
+
+    load_file(buf)
+}
+use std::error::Error as StdError;
+
+fn load_http(url: &Url) -> Result<Expression, Box<dyn StdError>> {
+    let mut res = get(url.clone())?;
+    let text = res.text()?;
+    load_file(text)
+}
+
+pub fn read_http(args: &[Expression], _: &mut Context) -> Expression {
+    fn request_http(url: impl AsRef<str>) -> Result<String, Box<dyn StdError>> {
+        let url = Url::parse(url.as_ref())?;
+        let mut res = get(url)?;
+        let text = res.text()?;
+        Ok(text)
+    }
+
+    match args {
+        [Str(s)] => {
+            // .. Do stuff
+            request_http(s).map(|s| s.into()).unwrap_or_else(|e| {
+                Error(Rc::new(Exception::custom(99, e.to_string())))
+            })
+        }
+        [x] => Error(Rc::new(Exception::signature("str", x.type_of()))),
+        xs => Error(Rc::new(Exception::arity(1, xs.len()))),
+    }
+}
+
 /// `import :: string -> a`
 ///
 /// Reads, parses, and runs the specified file, returning its result.
 pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
     #[cfg(target_os = "windows")]
-    fn clean_file_path(path: impl AsRef<str>) -> String {
-        let path = path.as_ref();
-        path.replace("/", "\\")
-    }
-
+    // fn clean_file_path(path: impl AsRef<str>) -> String {
+    //     let path = path.as_ref();
+    //     path.replace("/", "\\")
+    // }
     #[cfg(not(target_os = "windows"))]
     fn clean_file_path(path: impl AsRef<str>) -> String {
         path.as_ref().to_string()
     }
 
-    fn resolve_file_path(file_name: impl ToString, ctx: &Context) -> Str {
+    #[derive(Debug)]
+    enum ResolvedFile {
+        Url(Url),
+        Path(Str),
+    }
+
+    impl ResolvedFile {
+        fn as_str(&self) -> &str {
+            match self {
+                ResolvedFile::Url(url) => url.as_str(),
+                ResolvedFile::Path(path) => path.as_ref(),
+            }
+        }
+
+        fn to_str(&self) -> Str {
+            match self {
+                ResolvedFile::Url(url) => url.as_str().into(),
+                ResolvedFile::Path(path) => path.clone(),
+            }
+        }
+    }
+
+    fn resolve_file_path(
+        file_name: impl ToString,
+        ctx: &Context,
+    ) -> ResolvedFile {
+        // Check if we're dealing with http or local file
         let file_name = file_name.to_string();
-        let file_name = clean_file_path(file_name);
+        // let file_name = clean_file_path(file_name);
         let file_path = Path::new(&file_name);
-        if file_path.is_absolute() || file_path.starts_with("~") {
+        if file_path.is_absolute()
+            || file_path.starts_with("~")
+            || file_path.starts_with("http://")
+            || file_path.starts_with("https://")
+        {
             // Absolute path (or relative to home)
             // We don't need to do anything
-            let new_file = file_path.to_string_lossy().into_owned();
-            new_file.into()
+            // Check if http or local file
+            if let Ok(url) =
+                Url::parse(file_path.as_os_str().to_string_lossy().as_ref())
+            {
+                ResolvedFile::Url(url)
+            } else {
+                let path = std::fs::canonicalize(file_path).unwrap_or_default();
+                let new_file = path.to_string_lossy().into_owned();
+                ResolvedFile::Path(new_file.into())
+            }
         } else if file_path.is_relative() {
             // Relative path
-            let cur_file = ctx.get_cur_file();
 
+            let cur_file = ctx.get_cur_file();
             if let Some(cur_file) = cur_file {
                 // Extract path from current file
                 let cur_file = cur_file.to_string();
                 let path = std::path::Path::new(&cur_file);
 
-                let path = path.with_file_name(&file_name);
-                let path = std::fs::canonicalize(path).unwrap_or_default();
-                let new_file = path.to_string_lossy().into_owned();
-                new_file.into()
+                let local_file_name = if file_name.starts_with("./") {
+                    &file_name[2..]
+                } else {
+                    &file_name
+                };
+                let path = path.with_file_name(local_file_name);
+
+                // Check if it is now a url or not
+                if let Ok(url) = Url::parse(path.to_string_lossy().as_ref()) {
+                    ResolvedFile::Url(url)
+                } else {
+                    let path = std::fs::canonicalize(path).unwrap_or_default();
+                    let new_file = path.to_string_lossy().into_owned();
+                    ResolvedFile::Path(new_file.into())
+                }
             } else {
                 // Current file is not defined, default to absolute path
                 let new_file = file_path.to_string_lossy().into_owned();
-                new_file.into()
+                ResolvedFile::Path(new_file.into())
             }
         } else {
             // We aren't ready for this yet, but it can be for repositories
             let new_file = file_path.to_string_lossy().into_owned();
-            new_file.into()
+            ResolvedFile::Path(new_file.into())
         }
     }
 
@@ -652,31 +733,36 @@ pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
             let new_file_name = resolve_file_path(file_name, ctx);
 
             // Check if we have read the file already
-            if ctx.has_read_file(&new_file_name) {
-                Expression::default()
+            // if ctx.has_read_file(&new_file_name) {
+            //     Expression::default()
+            // } else {
+            let file_str = new_file_name.to_str();
+            ctx.add_file(file_str);
+            let res = match &new_file_name {
+                ResolvedFile::Url(url) => load_http(url),
+                ResolvedFile::Path(path) => load_path(path),
+            };
+
+            // let res = load_file(&new_file_name);
+            let prev_file_name = ctx.get_cur_file();
+            ctx.insert("__FILE__", new_file_name.as_str());
+            let res = res.map(|ex| ex.eval(ctx)).unwrap_or_else(|e| {
+                Error(Rc::new(Exception::custom(
+                    14,
+                    format!(
+                        "could not read file: \"{}\", reason: {}",
+                        file_name,
+                        e.to_string().to_lowercase()
+                    ),
+                )))
+            });
+            if let Some(prev) = prev_file_name {
+                ctx.insert("__FILE__", prev);
+            }
+            if res.is_exception() {
+                res
             } else {
-                ctx.add_file(new_file_name.clone());
-                let res = load_file(&new_file_name);
-                let prev_file_name = ctx.get_cur_file();
-                ctx.insert("__FILE__", new_file_name.to_string());
-                let res = res.map(|ex| ex.eval(ctx)).unwrap_or_else(|e| {
-                    Error(Rc::new(Exception::custom(
-                        14,
-                        format!(
-                            "could not read file: \"{}\", reason: {}",
-                            file_name,
-                            e.to_string().to_lowercase()
-                        ),
-                    )))
-                });
-                if let Some(prev) = prev_file_name {
-                    ctx.insert("__FILE__", prev);
-                }
-                if res.is_exception() {
-                    res
-                } else {
-                    Expression::default()
-                }
+                Expression::default()
             }
         }
         xs => Error(Rc::new(Exception::arity(1, xs.len()))),

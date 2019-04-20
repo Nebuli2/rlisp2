@@ -12,3 +12,4 @@ enable_rand = ["rlisp-interpreter/enable_rand"]
 rlisp-interpreter = { path = "../rlisp-interpreter" }
 rlisp-parser = { path = "../rlisp-parser" }
 time = "0.1"
+reqwest = "0.9.15"

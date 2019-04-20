@@ -161,6 +161,7 @@ fn load_functions(ctx: &mut Context) {
         "eval" => eval,
         "import" => import,
         "readfile" => readfile,
+        "request" => read_http,
         "parse" => parse,
         "type-of" => type_of,
         "format" => format,
