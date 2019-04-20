@@ -8,6 +8,7 @@ edition = "2018"
 default = ["http-request/native"]
 enable_rand = ["rlisp-interpreter/enable_rand"]
 wasm = ["http-request/wasm"]
+native = ["http-request/native"]
 
 [dependencies]
 rlisp-interpreter = { path = "../rlisp-interpreter" }
