@@ -44,7 +44,7 @@
             (if {value /= empty}
                 (printfln "#{value}")
                 nil)
-            (set! _ value))
+            (eval (parse "(set! _ value)")))
         print-error)
     (repl))
 
