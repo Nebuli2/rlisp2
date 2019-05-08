@@ -63,9 +63,6 @@
 (define {a /= b}
     (not {a = b}))
 
-(define-macro-rule (reload)
-    (import (string-concat RLISP_HOME "/loader.rl")))
-
 ; (define-macro def
 ;     [(def (name args...) body...)
 ;      (define name (lambda [...args] ...body))]
