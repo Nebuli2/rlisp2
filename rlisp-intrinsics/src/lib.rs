@@ -132,6 +132,7 @@ fn load_functions(ctx: &mut Context) {
         "sqrt" => sqrt,
         "floor" => floor,
         "ceil" => ceil,
+        "pow" => pow,
 
         // Boolean logic
         "and" => and,

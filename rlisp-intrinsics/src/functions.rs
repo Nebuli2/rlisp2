@@ -115,28 +115,53 @@ pub fn add(args: &[Expression], _: &mut Context) -> Expression {
         })
         .collect();
 
-    if let Ok(xs) = xs {
-        Num(xs.into_iter().fold(0.0, Add::add))
-    } else {
-        // Try quaternions
-        let xs: Result<Vec<_>, &Expression> = args
-            .iter()
-            .map(|expr| match expr {
-                Num(n) => Ok(Rc::new(Quat::from(*n))),
-                Quaternion(n) => Ok(n.clone()),
-                other => Err(other),
-            })
-            .collect();
-        if let Ok(xs) = xs {
-            Quaternion(Rc::new(
-                xs.into_iter()
-                    .map(|x| x.as_ref().clone())
-                    .fold(Quat::default(), Add::add),
-            ))
-        } else {
-            Error(Rc::new(Exception::arity(0, 0)))
+    match xs {
+        Ok(xs) => Num(xs.into_iter().fold(0.0, Add::add)),
+        _ => {
+            let xs: Result<Vec<_>, &Expression> = args
+                .iter()
+                .map(|expr| match expr {
+                    Num(n) => Ok(Rc::new(Quat::from(*n))),
+                    Quaternion(n) => Ok(n.clone()),
+                    other => Err(other),
+                })
+                .collect();
+            match xs {
+                Ok(xs) => Quaternion(Rc::new(
+                    xs.into_iter()
+                        .map(|x| x.as_ref().clone())
+                        .fold(Quat::default(), Add::add),
+                )),
+                Err(other) => Error(Rc::new(Exception::signature(
+                    "num|quaternion",
+                    other.type_of(),
+                ))),
+            }
         }
     }
+
+    // if let Ok(xs) = xs {
+    //     Num(xs.into_iter().fold(0.0, Add::add))
+    // } else {
+    //     // Try quaternions
+    //     let xs: Result<Vec<_>, &Expression> = args
+    //         .iter()
+    //         .map(|expr| match expr {
+    //             Num(n) => Ok(Rc::new(Quat::from(*n))),
+    //             Quaternion(n) => Ok(n.clone()),
+    //             other => Err(other),
+    //         })
+    //         .collect();
+    //     if let Ok(xs) = xs {
+    //         Quaternion(Rc::new(
+    //             xs.into_iter()
+    //                 .map(|x| x.as_ref().clone())
+    //                 .fold(Quat::default(), Add::add),
+    //         ))
+    //     } else {
+    //         Error(Rc::new(Exception::arity(0, 0)))
+    //     }
+    // }
     // xs.map(|xs| xs.into_iter().fold(0.0, Add::add))
     //     .map(|x| Num(x))
     //     .unwrap_or_else(|e| Error(Exception::signature("num", e.type_of())))
@@ -1278,3 +1303,8 @@ pub fn ceil(args: &[Expression], _: &mut Context) -> Expression {
 // {
 //     move |_, _| f().into()
 // }
+
+
+pub fn pow(args: &[Expression], _: &mut Context) -> Expression {
+    binary_fn(args, f64::powf)
+}
