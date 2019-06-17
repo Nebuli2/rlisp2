@@ -950,7 +950,7 @@ dependencies = [
 
 [[package]]
 name = "rlisp"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlisp-interpreter 0.1.1",

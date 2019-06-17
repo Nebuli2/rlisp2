@@ -148,6 +148,7 @@ fn load_functions(ctx: &mut Context) {
         ":" => cons,
         "head" => head,
         "tail" => tail,
+        "chars" => chars,
 
         "exit" => exit,
         "display" => display,

@@ -1308,3 +1308,20 @@ pub fn ceil(args: &[Expression], _: &mut Context) -> Expression {
 pub fn pow(args: &[Expression], _: &mut Context) -> Expression {
     binary_fn(args, f64::powf)
 }
+
+pub fn chars(args: &[Expression], _: &mut Context) -> Expression {
+    fn str_chars(s: &Str) -> Expression {
+        let list: ConsList<Expression> = s
+            .chars()
+            .map(|ch| format!("{}", ch).into())
+            .map(|s| Expression::Str(s))
+            .collect();
+        Expression::Cons(list)
+    }
+
+    match args {
+        [Str(s)] => str_chars(s),
+        [x] => Error(Rc::new(Exception::signature("str|symbol", x.type_of()))),
+        xs => Error(Rc::new(Exception::arity(1, xs.len()))),
+    }
+}
