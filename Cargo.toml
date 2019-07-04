@@ -4,18 +4,17 @@ members = ["rlisp-parser", "rlisp-intrinsics", "rlisp-interpreter"]
 
 [package]
 name = "rlisp"
-version = "0.2.8"
+version = "0.2.9"
 authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
 description = "A simple Lisp interpreter made in Rust, loosely based on Scheme"
 edition = "2018"
 
 [features]
-default = ["enable_rand", "rlisp-intrinsics/native"]
+default = ["enable_rand"]
 enable_rand = ["rlisp-interpreter/enable_rand", "rlisp-intrinsics/enable_rand"]
-wasm = ["rlisp-intrinsics/wasm"]
 
 [dependencies]
 rlisp-parser = { path = "./rlisp-parser" }
 rlisp-interpreter = { path = "./rlisp-interpreter" }
-rlisp-intrinsics = { path = "./rlisp-intrinsics", default-features = false }
+rlisp-intrinsics = { path = "./rlisp-intrinsics" }
 clap = "2.32.0"

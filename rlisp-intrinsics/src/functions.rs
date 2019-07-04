@@ -16,7 +16,8 @@ use rlisp_interpreter::{
     util::{print_pretty, print_stack_trace, wrap_begin, Str, Style},
 };
 
-use http_request::request;
+// use http_request::request;
+use minihttp::request::Request;
 
 #[cfg(feature = "enable_rand")]
 use rlisp_interpreter::rand::prelude::*;
@@ -628,6 +629,15 @@ fn load_path(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
     load_file(buf)
 }
 use std::error::Error as StdError;
+
+fn request(uri: impl AsRef<str>) -> Result<String, Box<dyn StdError>> {
+    let mut req = Request::new(uri.as_ref()).map_err(|e| "error")?;
+    let res = req.get().send().map_err(|e| "error")?;
+    match res.status_code() {
+        200 => Ok(res.text()),
+        _ => Ok(Err("error")?),
+    }
+}
 
 fn load_http(url: impl AsRef<str>) -> Result<Expression, Box<dyn StdError>> {
     let text = request(url)?;

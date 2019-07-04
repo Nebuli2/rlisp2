@@ -5,16 +5,14 @@ authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
 edition = "2018"
 
 [features]
-default = ["http-request/native"]
 enable_rand = ["rlisp-interpreter/enable_rand"]
-wasm = ["http-request/wasm"]
-native = ["http-request/native"]
 
 [dependencies]
 rlisp-interpreter = { path = "../rlisp-interpreter" }
 rlisp-parser = { path = "../rlisp-parser" }
 time = "0.1"
+minihttp = "0.1.9"
 
-[dependencies.http-request]
-git = "https://github.com/bwhetherington/http-request"
-default-features = false
+# [dependencies.http-request]
+# git = "https://github.com/bwhetherington/http-request"
+# default-features = false
