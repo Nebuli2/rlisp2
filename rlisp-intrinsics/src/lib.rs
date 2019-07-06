@@ -161,9 +161,6 @@ fn load_functions(ctx: &mut Context) {
         "append" => append,
         "empty?" => empty,
         "eval" => eval,
-        "import" => import,
-        "readfile" => readfile,
-        "request" => read_http,
         "parse" => parse,
         "type-of" => type_of,
         "format" => format,
@@ -186,6 +183,14 @@ fn load_functions(ctx: &mut Context) {
     define_intrinsics! {
         context: ctx,
         "random" => random
+    }
+
+    #[cfg(not(feature = "wasm"))]
+    define_intrinsics! {
+        context: ctx,
+        "import" => import,
+        "readfile" => readfile,
+        "request" => read_http
     }
 
     // Boolean logic

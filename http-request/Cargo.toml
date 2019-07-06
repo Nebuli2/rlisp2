@@ -1,0 +1,12 @@
+[package]
+name = "http-request"
+version = "0.1.0"
+authors = ["Benjamin Hetherington <b.w.hetherington@gmail.com>"]
+edition = "2018"
+
+[features]
+wasm = []
+
+[target.'cfg(not(feature = "wasm"))'.dependencies.minihttp]
+minihttp = "https://github.com/bwhetherington/minihttp"
+version = "*"

@@ -16,8 +16,7 @@ use rlisp_interpreter::{
     util::{print_pretty, print_stack_trace, wrap_begin, Str, Style},
 };
 
-// use http_request::request;
-use minihttp::request::Request;
+use http_request::http_request;
 
 #[cfg(feature = "enable_rand")]
 use rlisp_interpreter::rand::prelude::*;
@@ -630,20 +629,18 @@ fn load_path(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
 }
 use std::error::Error as StdError;
 
+#[cfg(not(feature = "wasm"))]
 fn request(uri: impl AsRef<str>) -> Result<String, Box<dyn StdError>> {
-    let mut req = Request::new(uri.as_ref()).map_err(|e| "error")?;
-    let res = req.get().send().map_err(|e| "error")?;
-    match res.status_code() {
-        200 => Ok(res.text()),
-        _ => Ok(Err("error")?),
-    }
+    Ok(http_request(uri).ok_or("this method is not yet implemented")?)
 }
 
+#[cfg(not(feature = "wasm"))]
 fn load_http(url: impl AsRef<str>) -> Result<Expression, Box<dyn StdError>> {
     let text = request(url)?;
     load_file(text)
 }
 
+#[cfg(not(feature = "wasm"))]
 pub fn read_http(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Str(s)] => {
@@ -674,6 +671,7 @@ where
 /// `import :: string -> a`
 ///
 /// Reads, parses, and runs the specified file, returning its result.
+#[cfg(not(feature = "wasm"))]
 pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
     #[cfg(target_os = "windows")]
     // fn clean_file_path(path: impl AsRef<str>) -> String {
@@ -778,6 +776,7 @@ pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
             // } else {
             let file_str = new_file_name.to_str();
             ctx.add_file(file_str);
+
             let res = match &new_file_name {
                 ResolvedFile::Url(url) => load_http(url),
                 ResolvedFile::Path(path) => load_path(path),
@@ -1313,7 +1312,6 @@ pub fn ceil(args: &[Expression], _: &mut Context) -> Expression {
 // {
 //     move |_, _| f().into()
 // }
-
 
 pub fn pow(args: &[Expression], _: &mut Context) -> Expression {
     binary_fn(args, f64::powf)
