@@ -16,9 +16,10 @@ use rlisp_interpreter::{
     util::{print_pretty, print_stack_trace, wrap_begin, Str, Style},
 };
 
+#[cfg(feature = "native")]
 use http_request::http_request;
 
-#[cfg(feature = "enable_rand")]
+#[cfg(feature = "native")]
 use rlisp_interpreter::rand::prelude::*;
 
 use rlisp_parser::{preprocessor::*, Parser};
@@ -629,18 +630,18 @@ fn load_path(file_name: impl AsRef<str>) -> Result<Expression, Box<Error>> {
 }
 use std::error::Error as StdError;
 
-#[cfg(not(feature = "wasm"))]
+#[cfg(feature = "native")]
 fn request(uri: impl AsRef<str>) -> Result<String, Box<dyn StdError>> {
     Ok(http_request(uri).ok_or("this method is not yet implemented")?)
 }
 
-#[cfg(not(feature = "wasm"))]
+#[cfg(feature = "native")]
 fn load_http(url: impl AsRef<str>) -> Result<Expression, Box<dyn StdError>> {
     let text = request(url)?;
     load_file(text)
 }
 
-#[cfg(not(feature = "wasm"))]
+#[cfg(feature = "native")]
 pub fn read_http(args: &[Expression], _: &mut Context) -> Expression {
     match args {
         [Str(s)] => {
@@ -671,7 +672,7 @@ where
 /// `import :: string -> a`
 ///
 /// Reads, parses, and runs the specified file, returning its result.
-#[cfg(not(feature = "wasm"))]
+#[cfg(feature = "native")]
 pub fn import(args: &[Expression], ctx: &mut Context) -> Expression {
     #[cfg(target_os = "windows")]
     // fn clean_file_path(path: impl AsRef<str>) -> String {
@@ -1184,7 +1185,7 @@ pub fn string_concat(args: &[Expression], _: &mut Context) -> Expression {
     Str(buf.into())
 }
 
-#[cfg(feature = "enable_rand")]
+#[cfg(feature = "native")]
 pub fn random(args: &[Expression], ctx: &mut Context) -> Expression {
     match args.len() {
         0 => {

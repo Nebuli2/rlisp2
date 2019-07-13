@@ -1,15 +1,6 @@
-#[cfg(not(feature = "wasm"))]
-mod app;
+#![cfg(feature = "native")]
+extern crate rlisp;
 
-#[cfg(not(feature = "wasm"))]
-mod repl;
-
-#[cfg(not(feature = "wasm"))]
 fn main() {
-    app::run();
-}
-
-#[cfg(feature = "wasm")]
-fn main() {
-    println!("Hello, world!");
+    rlisp::app::run();
 }

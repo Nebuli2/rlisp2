@@ -179,18 +179,13 @@ fn load_functions(ctx: &mut Context) {
         "args" => args,
     }
 
-    #[cfg(feature = "enable_rand")]
-    define_intrinsics! {
-        context: ctx,
-        "random" => random
-    }
-
-    #[cfg(not(feature = "wasm"))]
+    #[cfg(feature = "native")]
     define_intrinsics! {
         context: ctx,
         "import" => import,
         "readfile" => readfile,
-        "request" => read_http
+        "request" => read_http,
+        "random" => random
     }
 
     // Boolean logic

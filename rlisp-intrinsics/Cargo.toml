@@ -6,7 +6,7 @@ edition = "2018"
 
 [features]
 enable_rand = ["rlisp-interpreter/enable_rand"]
-wasm = ["http-request/wasm"]
+native = ["rlisp-interpreter/enable_rand", "http-request"]
 
 [dependencies]
 rlisp-interpreter = { path = "../rlisp-interpreter" }
@@ -15,4 +15,4 @@ time = "0.1"
 
 [dependencies.http-request]
 path = "../http-request"
-default-features = false
+optional = true
